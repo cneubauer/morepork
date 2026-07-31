@@ -3,7 +3,7 @@ using WaaS.Common.DesiredState;
 
 namespace WaaS.Space.DesiredState;
 
-public class Webspace : WaasResource
+public class Space : WaasResource
 {
     public Platform Platform { get; set; }
 

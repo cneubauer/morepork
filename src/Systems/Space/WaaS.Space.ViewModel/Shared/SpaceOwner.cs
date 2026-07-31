@@ -1,6 +1,6 @@
 ﻿namespace WaaS.Space.ViewModel;
 
-public class WebspaceOwner
+public class SpaceOwner
 {
     /// <summary>
     /// The numeric user ID of the webspace owner.

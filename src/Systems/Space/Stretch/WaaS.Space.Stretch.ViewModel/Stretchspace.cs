@@ -1,10 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using WaaS.SharedWebspaceManager.ViewModel;
+using WaaS.Space.Classic.ViewModel;
 using WaaS.Space.ViewModel;
 
 namespace WaaS.Space.Stretch.ViewModel;
 
-public class Stretchspace : Webspace
+public class Stretchspace : Space.ViewModel.Space
 {
     /// <summary>
     /// Platform-provided metadata for this stretchspace.

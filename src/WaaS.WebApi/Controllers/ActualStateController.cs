@@ -1,14 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Temporalio.Client;
 
-namespace MyNamespace;
+namespace WaaS.WebApi;
 
 [ApiController]
 [Route("api/actual-state")]
 public class ActualStateController(ITemporalClient temporalClient) : ControllerBase
 {
     [HttpPut]
-    public async Task<IActionResult> ReceiveActualState([FromBody] DesiredState desiredState)
+    public async Task<IActionResult> ReceiveActualState([FromBody] IDesiredState<Shared> desiredState)
     {
         var childWorkflowId = $"wait-notify-{desiredState.StackInstanceId}-{desiredState.SystemInstanceId}";
 

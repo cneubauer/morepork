@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using WaaS.Space.ViewModel;
 
-namespace WaaS.SharedWebspaceManager.ViewModel;
+namespace WaaS.Space.Classic.ViewModel;
 
 public class CompatLink
 {

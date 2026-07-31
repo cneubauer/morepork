@@ -1,4 +1,4 @@
-﻿namespace WaaS.SharedWebspaceManager.ViewModel;
+﻿namespace WaaS.Space.Classic.ViewModel;
 
 public enum DirectoryType
 {

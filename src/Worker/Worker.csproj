@@ -1,10 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Workflow\Workflow.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Temporalio" />
   </ItemGroup>
 

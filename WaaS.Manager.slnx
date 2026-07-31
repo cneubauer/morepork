@@ -5,6 +5,7 @@
   <Folder Name="/src/Common/">
     <Project Path="src/Common/WaaS.Common.DesiredState/WaaS.Common.DesiredState.csproj" />
     <Project Path="src/Common/WaaS.Common.ViewModel/WaaS.Common.ViewModel.csproj" />
+    <Project Path="src/Common/WaaS.Common.Workflow/WaaS.Common.Workflow.csproj" />
   </Folder>
   <Folder Name="/src/Systems/" />
   <Folder Name="/src/Systems/Space/">
@@ -14,6 +15,7 @@
   <Folder Name="/src/Systems/Space/Classic/">
     <Project Path="src/Systems/Space/Classic/WaaS.Space.Classic.DesiredState/WaaS.Space.Classic.DesiredState.csproj" />
     <Project Path="src/Systems/Space/Classic/WaaS.Space.Classic.ViewModel/WaaS.Space.Classic.ViewModel.csproj" />
+    <Project Path="src/Systems/Space/Classic/WaaS.Space.Classic.Workflow/WaaS.Space.Classic.Workflow.csproj" />
   </Folder>
   <Folder Name="/src/Systems/Space/Stretch/">
     <Project Path="src/Systems/Space/Stretch/WaaS.Space.Stretch.DesiredState/WaaS.Space.Stretch.DesiredState.csproj" />
@@ -23,8 +25,6 @@
     <Project Path="src/Systems/Webshield/WaaS.Webshield.DesiredState/WaaS.Webshield.DesiredState.csproj" />
     <Project Path="src/Systems/Webshield/WaaS.Webshield.ViewModel/WaaS.Webshield.ViewModel.csproj" />
   </Folder>
-  <Project Path="src/Models/Models.csproj" />
   <Project Path="src/WaaS.WebApi/WebApi.csproj" />
   <Project Path="src/Worker/Worker.csproj" />
-  <Project Path="src/Workflow/Workflow.csproj" />
 </Solution>

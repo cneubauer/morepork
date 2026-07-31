@@ -4,10 +4,10 @@ using WaaS.Common.ViewModel;
 
 namespace WaaS.Space.ViewModel;
 
-public class Webspace : ITemporary//, IValidatableObject
+public class Space : ITemporary//, IValidatableObject
 {
     /// <summary>
-    /// The unique identifier of the stretchspace.
+    /// The unique identifier of the space.
     /// </summary>
     /// <example>500123456</example>
     public ulong? SystemInstanceId { get; set; }
@@ -42,7 +42,7 @@ public class Webspace : ITemporary//, IValidatableObject
     /// <summary>
     /// The Linux user/group ownership assigned to this webspace by the backend.
     /// </summary>
-    public WebspaceOwner? Owner { get; set; }
+    public SpaceOwner? Owner { get; set; }
 
     /// <summary>
     /// Locks designed for tenant use cases. Platform admins can set and remove tenant locks as well.

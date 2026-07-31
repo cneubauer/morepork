@@ -4,7 +4,7 @@ using WaaS.Space.DesiredState;
 
 namespace WaaS.Space.Stretch.DesiredState;
 
-public class Stretchspace : Webspace, IWebspace
+public class Stretchspace : Space.DesiredState.Space, IWebspace
 {
     [LookupKey(LookupResourceKeyType.StretchSpaceId)]
     public ulong StretchspaceId { get; set; }

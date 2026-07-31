@@ -1,8 +1,8 @@
 using WaaS.Space.ViewModel;
 
-namespace WaaS.SharedWebspaceManager.ViewModel;
+namespace WaaS.Space.Classic.ViewModel;
 
-public class SharedWebspace : Webspace
+public class SharedWebspace : Space.ViewModel.Space
 {
     /// <summary>
     /// Platform-provided metadata for this shared webspace.

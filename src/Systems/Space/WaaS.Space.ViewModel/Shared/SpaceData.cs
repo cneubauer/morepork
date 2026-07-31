@@ -5,7 +5,7 @@ namespace WaaS.Space.ViewModel;
 /// <summary>
 /// Space related data.
 /// </summary>
-public class WebspaceData
+public class SpaceData
 {
     [Required]
     public PlatformType? Platform { get; set; }

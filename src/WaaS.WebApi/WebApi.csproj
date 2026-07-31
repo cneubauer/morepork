@@ -13,8 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Workflow\Workflow.csproj" />
-    <ProjectReference Include="..\Models\Models.csproj" />
+    <ProjectReference Include="..\Systems\Space\Classic\WaaS.Space.Classic.ViewModel\WaaS.Space.Classic.ViewModel.csproj" />
   </ItemGroup>
 
 </Project>
