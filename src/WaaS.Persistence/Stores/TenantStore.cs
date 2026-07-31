@@ -1,0 +1,36 @@
+namespace WaaS.Persistence;
+
+public class TenantStore(string connectionString) : ITenantStore
+{
+    public async Task<Tenant?> Get(string tenantName)
+    {
+        var sql = @"
+            SELECT id, name, profile
+            FROM tenant_profile
+            WHERE name = @TenantName
+        ";
+
+        using var connection = new NpgsqlConnection(connectionString);
+
+        return await connection.QuerySingleOrDefaultAsync<Tenant>(sql, new
+        {
+            TenantName = tenantName
+        });
+    }
+
+    public async Task<Tenant?> Get(short tenantId)
+    {
+        var sql = @"
+            SELECT id, name, profile
+            FROM tenant_profile
+            WHERE id = @TenantId
+        ";
+
+        using var connection = new NpgsqlConnection(connectionString);
+
+        return await connection.QuerySingleOrDefaultAsync<Tenant>(sql, new
+        {
+            TenantId = tenantId
+        });
+    }
+}

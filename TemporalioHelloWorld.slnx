@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="src/Models/Models.csproj" />
-  <Project Path="src/WebApi/WebApi.csproj" />
-  <Project Path="src/Worker/Worker.csproj" />
-  <Project Path="src/Workflow/Workflow.csproj" />
-</Solution>

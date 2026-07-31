@@ -163,7 +163,7 @@ handler and start the workflow only after the state is committed.
 
 **Plan for the loss of transactional enqueue.** The reference implementation commits the
 desired state and the submitted jobs in one Postgres transaction
-(`ILockedDesiredState.Submit()`). Temporal lives in its own datastore, so this property does
+(`IDesiredState.Submit()`). Temporal lives in its own datastore, so this property does
 not survive. Expected answer: **write an outbox row in the same transaction as the desired
 state, and start the workflow from the outbox.** This is the single most valuable property
 we give up, and it needs a deliberate design, not a discovery during integration.

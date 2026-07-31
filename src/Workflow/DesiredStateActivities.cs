@@ -56,8 +56,6 @@ public class DesiredStateActivities
     [Activity]
     public async Task<Webspace> Publish(DesiredState desiredState)
     {
-        await Task.Delay(2000);
-        
         desiredState.Webspace.WebspaceId = 4321;
 
         return desiredState.Webspace;
@@ -66,8 +64,6 @@ public class DesiredStateActivities
     [Activity]
     public async Task<Webspace> Notify(DesiredState desiredState)
     {
-        await Task.Delay(2000);
-
         return desiredState.Webspace;
     }
 }

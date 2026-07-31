@@ -1,0 +1,39 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Framework -->
+    <PackageVersion Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Abstractions" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.2" />
+    <PackageVersion Include="System.DirectoryServices.Protocols" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    
+    <!-- Workflow -->
+    <PackageVersion Include="Temporalio" Version="1.17.0" />
+    <PackageVersion Include="Temporalio.Extensions.Hosting" Version="1.17.0" />
+
+    <!-- Data -->
+    <PackageVersion Include="Dapper" Version="2.1.66" />
+    <PackageVersion Include="Npgsql" Version="10.0.1" />
+    <PackageVersion Include="protobuf-net" Version="3.2.30" />
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
+
+    <!-- API -->
+    <PackageVersion Include="Cronos" Version="0.11.0" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.16.16" />
+
+    <!-- Testing -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.12" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.11.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+</Project>
