@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "wxDbAGOv01A=",
+  "success": true,
+  "projectFilePath": "/home/cneubauer/Development/temporal-test/src/Workflow/Workflow.csproj",
+  "expectedPackageFiles": [
+    "/home/cneubauer/.nuget/packages/google.protobuf/3.26.1/google.protobuf.3.26.1.nupkg.sha512",
+    "/home/cneubauer/.nuget/packages/microsoft.extensions.logging.abstractions/2.2.0/microsoft.extensions.logging.abstractions.2.2.0.nupkg.sha512",
+    "/home/cneubauer/.nuget/packages/nexusrpc/0.3.0/nexusrpc.0.3.0.nupkg.sha512",
+    "/home/cneubauer/.nuget/packages/temporalio/1.17.0/temporalio.1.17.0.nupkg.sha512"
+  ],
+  "logs": []
+}
