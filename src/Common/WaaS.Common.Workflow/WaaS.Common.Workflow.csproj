@@ -5,14 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
+  
   <ItemGroup>
-    <PackageReference Include="Temporalio" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\WaaS.Space.Classic.DesiredState\WaaS.Space.Classic.DesiredState.csproj" />
-    <ProjectReference Include="..\WaaS.Space.Classic.ViewModel\WaaS.Space.Classic.ViewModel.csproj" />
     <ProjectReference Include="..\..\WaaS.Persistence\WaaS.Persistence.csproj" />
   </ItemGroup>
 

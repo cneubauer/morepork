@@ -2,7 +2,7 @@ namespace WaaS.Space.DesiredState;
 
 public static class ToViewModelExtensions
 {
-    public static T ToViewModel<T>(this Space entity, ulong systemInstanceId)
+    public static T ToViewModel<T>(this Space entity, ulong? systemInstanceId)
         where T : ViewModel.Space, new()
         => new()
         {

@@ -8,23 +8,16 @@ namespace WaaS.WebApi;
 public class ActualStateController(ITemporalClient temporalClient) : ControllerBase
 {
     [HttpPut]
-    public async Task<IActionResult> ReceiveActualState([FromBody] IDesiredState<Shared> desiredState)
+    public async Task<IActionResult> ReceiveActualState([FromBody] IDesiredState<SharedWebspaceData> desiredState)
     {
         var childWorkflowId = $"wait-notify-{desiredState.StackInstanceId}-{desiredState.SystemInstanceId}";
 
-        try
-        {
-            var workflowHandle = temporalClient.GetWorkflowHandle<WaitForAckWorkflow>(childWorkflowId);
+        var workflowHandle = temporalClient.GetWorkflowHandle<WaitForAckWorkflow>(childWorkflowId);
 
-            await workflowHandle.SignalAsync(
-                wf => wf.ReceiveCompletionSignalAsync(desiredState)
-            );
+        await workflowHandle.SignalAsync(
+            workflow => workflow.ReceiveCompletionSignalAsync(desiredState)
+        );
 
-            return Ok(new { Message = "Signal and data delivered to workflow." });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Error = "Failed to send signal", Details = ex.Message });
-        }
+        return Ok();
     }
 }

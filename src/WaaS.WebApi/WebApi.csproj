@@ -14,6 +14,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Systems\Space\Classic\WaaS.Space.Classic.ViewModel\WaaS.Space.Classic.ViewModel.csproj" />
+    <ProjectReference Include="..\Systems\Space\WaaS.Space.DesiredState\WaaS.Space.DesiredState.csproj" />
+    <ProjectReference Include="..\Systems\Space\Stretch\WaaS.Space.Stretch.DesiredState\WaaS.Space.Stretch.DesiredState.csproj" />
+    <ProjectReference Include="..\Systems\Space\Classic\WaaS.Space.Classic.DesiredState\WaaS.Space.Classic.DesiredState.csproj" />
+    <ProjectReference Include="..\Systems\Space\Classic\WaaS.Space.Classic.Workflow\WaaS.Space.Classic.Workflow.csproj" />
   </ItemGroup>
 
 </Project>

@@ -5,12 +5,5 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  
-  <ItemGroup>
-  </ItemGroup>
-  
-  <ItemGroup>
-    <ProjectReference Include="../../Framework/WaaS.Framework/WaaS.Framework.csproj" />
-  </ItemGroup>
 
 </Project>

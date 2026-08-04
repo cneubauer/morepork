@@ -26,5 +26,4 @@
     <Project Path="src/Systems/Webshield/WaaS.Webshield.ViewModel/WaaS.Webshield.ViewModel.csproj" />
   </Folder>
   <Project Path="src/WaaS.WebApi/WebApi.csproj" />
-  <Project Path="src/Worker/Worker.csproj" />
 </Solution>

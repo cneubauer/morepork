@@ -5,29 +5,45 @@ namespace WaaS.WebApi;
 
 [ApiController]
 [Route("api/{tenant}/stack-instances/{stackInstanceId}/stretchspaces")]
-public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredStateStore<Space.Classic.DesiredState.SharedWebspace> desiredStateStore) : ControllerBase
+public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredStateStore<SharedWebspaceData> desiredStateStore) : ControllerBase
 {
-    // [HttpPost]
-    // public async Task<IActionResult> CreateSharedWebspace(
-    //     [FromRoute] ulong stackInstanceId,
-    //     [FromBody] SharedWebspace webspace,
-    //     [FromHeader(Name = "Transaction-Id")] string? transactionId
-    // )
-    // {
-    //     transactionId ??= $"waas-create-{Guid.NewGuid()}";
+    [HttpPut("{systemInstanceId}")]
+    public async Task<IActionResult> UpdateSharedWebspace(
+        [FromRoute] ulong stackInstanceId,
+        [FromRoute] ulong systemInstanceId,
+        [FromBody] Space.Classic.ViewModel.SharedWebspace webspace,
+        [FromHeader(Name = "Transaction-Id")] string? transactionId
+    )
+    {
+        transactionId ??= $"waas-update-{Guid.NewGuid()}";
 
-    //     var options = new WorkflowOptions(id: transactionId, taskQueue: "default");
+        var transaction = await desiredStateStore.BeginTransaction();
 
-    //     var result = await temporalClient.ExecuteWorkflowAsync(
-    //         (PublishWorkflow wf) => wf.RunAsync(stackInstanceId, webspace),
-    //         options
-    //     );
+        await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
 
-    //     if (result.ValidationErrors.Count > 0)
-    //         return BadRequest(new { Errors = result.ValidationErrors });
+        var desiredState = await desiredStateStore.Read(transaction, stackInstanceId, systemInstanceId);
 
-    //     return Ok(result.DesiredState);
-    // }
+        if (desiredState is null)
+            return NotFound();
+
+        desiredState.Data.Webspace.Apply(webspace);
+
+        desiredState = await desiredStateStore.Save(transaction, desiredState);
+
+        await desiredStateStore.Schedule(transaction, transactionId, stackInstanceId, systemInstanceId);
+
+        await transaction.CommitAsync();
+
+        var result = await temporalClient.ExecuteWorkflowAsync(
+            (PublishWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId, webspace),
+            new WorkflowOptions(id: transactionId, taskQueue: WorkflowDefinitions.DefaultTaskQueue)
+        );
+
+        if (result.ValidationErrors.Count > 0)
+            return BadRequest(new { Errors = result.ValidationErrors });
+
+        return Ok(result.DesiredState.Data.Space.ToViewModel<Space.Classic.ViewModel.SharedWebspace>(result.DesiredState.SystemInstanceId));
+    }
 
     [HttpGet("{systemInstanceId}")]
     public async Task<IActionResult> ReadSharedWebspace([FromRoute] ulong stackInstanceId, [FromRoute] ulong systemInstanceId)
@@ -37,7 +53,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredSt
         if (desiredState is null)
             return NotFound();
 
-        var webspace = desiredState.Data.ToViewModel(desiredState.SystemInstanceId);
+        var webspace = desiredState.Data.Space.ToViewModel<Space.Classic.ViewModel.SharedWebspace>(desiredState.SystemInstanceId);
 
         return Ok(webspace);
     }
