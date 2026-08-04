@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Temporalio.Client;
 
 namespace WaaS.WebApi;
 
@@ -16,6 +15,8 @@ public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredSt
     )
     {
         transactionId ??= $"waas-update-{Guid.NewGuid()}";
+
+        #region Transaction
 
         var transaction = await desiredStateStore.BeginTransaction();
 
@@ -34,10 +35,11 @@ public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredSt
 
         await transaction.CommitAsync();
 
-        var result = await temporalClient.ExecuteWorkflowAsync(
-            (PublishWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId, webspace),
-            new WorkflowOptions(id: transactionId, taskQueue: WorkflowDefinitions.DefaultTaskQueue)
-        );
+        #endregion
+
+        var workflowHandle = temporalClient.GetWorkflowHandle(transactionId);
+
+        var result = await workflowHandle.GetResultAsync<WaasResult<SharedWebspaceData>>();
 
         if (result.ValidationErrors.Count > 0)
             return BadRequest(new { Errors = result.ValidationErrors });
