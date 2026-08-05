@@ -8,7 +8,7 @@ public class WaitForAckWorkflow
     private bool _isSignaled = false;
 
     [WorkflowSignal]
-    public async Task ReceiveCompletionSignalAsync(IDesiredState<SharedWebspaceData> desiredState)
+    public async Task ReceiveCompletionSignalAsync(DesiredState<SharedWebspaceData> desiredState)
     {
         // Update the state flag to unblock WaitConditionAsync
         _isSignaled = true;

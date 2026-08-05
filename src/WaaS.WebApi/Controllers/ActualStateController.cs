@@ -8,7 +8,7 @@ namespace WaaS.WebApi;
 public class ActualStateController(ITemporalClient temporalClient) : ControllerBase
 {
     [HttpPut]
-    public async Task<IActionResult> ReceiveActualState([FromBody] IDesiredState<SharedWebspaceData> desiredState)
+    public async Task<IActionResult> ReceiveActualState([FromBody] DesiredState<SharedWebspaceData> desiredState)
     {
         var childWorkflowId = $"wait-notify-{desiredState.StackInstanceId}-{desiredState.SystemInstanceId}";
 

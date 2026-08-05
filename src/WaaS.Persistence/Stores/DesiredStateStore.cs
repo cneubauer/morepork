@@ -12,8 +12,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
 
     private const string ReadSql = """
         SELECT
-            stack_instance_id,
-            system_instance_id,
+            stack_instance_id AS StackInstanceId,
+            system_instance_id AS SystemInstanceId,
             state_namespace AS Namespace,
             state_zone AS Zone,
             state_version AS Version,
@@ -65,8 +65,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             DO UPDATE
             SET data = EXCLUDED.data
         RETURNING
-            stack_instance_id,
-            system_instance_id,
+            stack_instance_id AS StackInstanceId,
+            system_instance_id AS SystemInstanceId,
             state_namespace AS Namespace,
             state_zone AS Zone,
             state_version AS Version,
@@ -88,11 +88,10 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
     public async Task Lock(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId)
     {
         await transaction.Connection.ExecuteAsync(
-            "SELECT pg_advisory_xact_lock(@LockKey1, @LockKey2);",
-            new 
+            "SELECT pg_advisory_xact_lock(@LockKey);",
+            new
             {
-                LockKey1 = (long)stackInstanceId,
-                LockKey2 = (long)systemInstanceId
+                LockKey = (long)(stackInstanceId ^ (systemInstanceId << 1))
             },
             transaction
         );
@@ -115,8 +114,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
                 @Data::jsonb, @Tenant, false, @Created, NULL, NULL, @NextCheck
             FROM new_system
             RETURNING
-                stack_instance_id,
-                system_instance_id,
+                stack_instance_id AS StackInstanceId,
+                system_instance_id AS SystemInstanceId,
                 state_namespace AS Namespace,
                 state_zone AS Zone,
                 state_version AS Version,
@@ -214,7 +213,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
 
     private const string ListSql = """
         SELECT DISTINCT ON (system_instance_id, state_zone)
-            stack_instance_id, system_instance_id,
+            stack_instance_id AS StackInstanceId, system_instance_id AS SystemInstanceId,
             state_namespace AS Namespace, state_zone AS Zone,
             state_version AS Version, data, tenant, tombstoned,
             created, applied, expired
@@ -243,8 +242,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
 
     private const string LookupByKeySql = """
         SELECT DISTINCT ON (ds.stack_instance_id, ds.system_instance_id, ds.state_namespace, ds.state_zone)
-            ds.stack_instance_id,
-            ds.system_instance_id,
+            ds.stack_instance_id AS StackInstanceId,
+            ds.system_instance_id AS SystemInstanceId,
             ds.state_namespace AS Namespace,
             ds.state_zone      AS Zone,
             ds.state_version   AS Version,
@@ -269,8 +268,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
 
     private const string LookupByStackInstanceIdSql = """
         SELECT DISTINCT ON (system_instance_id, state_namespace, state_zone)
-            stack_instance_id,
-            system_instance_id,
+            stack_instance_id AS StackInstanceId,
+            system_instance_id AS SystemInstanceId,
             state_namespace AS Namespace,
             state_zone      AS Zone,
             state_version   AS Version,
@@ -289,8 +288,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
 
     private const string LookupBySystemInstanceIdSql = """
         SELECT DISTINCT ON (stack_instance_id, state_namespace, state_zone)
-            stack_instance_id,
-            system_instance_id,
+            stack_instance_id AS StackInstanceId,
+            system_instance_id AS SystemInstanceId,
             state_namespace AS Namespace,
             state_zone      AS Zone,
             state_version   AS Version,

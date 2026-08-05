@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Temporalio.Exceptions;
 
 namespace WaaS.WebApi;
 
@@ -18,7 +19,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredSt
 
         #region Transaction
 
-        var transaction = await desiredStateStore.BeginTransaction();
+        using var transaction = await desiredStateStore.BeginTransaction();
 
         await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
 
@@ -37,14 +38,29 @@ public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredSt
 
         #endregion
 
-        var workflowHandle = temporalClient.GetWorkflowHandle(transactionId);
-
-        var result = await workflowHandle.GetResultAsync<WaasResult<SharedWebspaceData>>();
+        var result = await AwaitWorkflowResult(transactionId);
 
         if (result.ValidationErrors.Count > 0)
             return BadRequest(new { Errors = result.ValidationErrors });
 
         return Ok(result.DesiredState.Data.Space.ToViewModel<Space.Classic.ViewModel.SharedWebspace>(result.DesiredState.SystemInstanceId));
+    }
+
+    private async Task<WaasResult<SharedWebspaceData>> AwaitWorkflowResult(string transactionId)
+    {
+        var handle = temporalClient.GetWorkflowHandle(transactionId);
+
+        while (true)
+        {
+            try
+            {
+                return await handle.GetResultAsync<WaasResult<SharedWebspaceData>>();
+            }
+            catch (RpcException exception) when (exception.Code == RpcException.StatusCode.NotFound)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(200), HttpContext.RequestAborted);
+            }
+        }
     }
 
     [HttpGet("{systemInstanceId}")]

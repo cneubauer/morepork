@@ -16,6 +16,7 @@
     <Project Path="src/Systems/Space/Classic/WaaS.Space.Classic.DesiredState/WaaS.Space.Classic.DesiredState.csproj" />
     <Project Path="src/Systems/Space/Classic/WaaS.Space.Classic.ViewModel/WaaS.Space.Classic.ViewModel.csproj" />
     <Project Path="src/Systems/Space/Classic/WaaS.Space.Classic.Workflow/WaaS.Space.Classic.Workflow.csproj" />
+    <Project Path="src/Systems/Space/Classic/WaaS.Space.Classic.Worker/WaaS.Space.Classic.Worker.csproj" />
   </Folder>
   <Folder Name="/src/Systems/Space/Stretch/">
     <Project Path="src/Systems/Space/Stretch/WaaS.Space.Stretch.DesiredState/WaaS.Space.Stretch.DesiredState.csproj" />

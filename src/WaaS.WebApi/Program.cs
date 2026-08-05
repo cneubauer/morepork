@@ -6,10 +6,15 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddControllers();
 
+builder.Services.AddDesiredStateStore<SharedWebspaceData>(
+    builder.Configuration.GetConnectionString("DesiredState")!);
+
 builder.Services.AddTemporalClient(options =>
 {
-    options.TargetHost = "localhost:7233";
+    options.TargetHost = builder.Configuration["Temporal:TargetHost"];
 });
+
+builder.Services.AddHostedService<WorkflowExecutor>();
 
 var app = builder.Build();
 

@@ -5,9 +5,9 @@ using Temporalio.Activities;
 public class SharedWebspaceActivities(IDesiredStateStore<SharedWebspaceData> desiredStateStore, ILogger<SharedWebspaceActivities> logger)
 {
     [Activity]
-    public async Task<IDesiredState<SharedWebspaceData>?> Read(ulong stackInstanceId, ulong systemInstanceId)
+    public async Task<DesiredState<SharedWebspaceData>?> Read(ulong stackInstanceId, ulong systemInstanceId)
     {
-        return await desiredStateStore.Read(stackInstanceId, systemInstanceId);
+        return (DesiredState<SharedWebspaceData>?)await desiredStateStore.Read(stackInstanceId, systemInstanceId);
     }
 
     [Activity]
