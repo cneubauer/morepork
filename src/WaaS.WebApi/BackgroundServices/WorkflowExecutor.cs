@@ -1,11 +1,17 @@
 using Dapper;
 using Npgsql;
-using Temporalio.Exceptions;
+using Temporalio.Api.Enums.V1;
 
 namespace WaaS.WebApi;
 
+/// <summary>
+/// The only component that starts workflows. Claims outbox entries and starts the workflow for
+/// each; the waiting request finds it by transaction ID.
+/// </summary>
 public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration configuration, ILogger<WorkflowExecutor> logger) : BackgroundService
 {
+    private static readonly TimeSpan _sweepInterval = TimeSpan.FromSeconds(1);
+
     private const string ClaimSql = """
         DELETE FROM outbox
         WHERE transaction_id IN (
@@ -18,40 +24,42 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
     {
         var connectionString = configuration.GetConnectionString("DesiredState")!;
 
-        while (!stoppingToken.IsCancellationRequested)
+        using var timer = new PeriodicTimer(_sweepInterval);
+
+        while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             try
             {
-                await using var connection = new NpgsqlConnection(connectionString);
-                await connection.OpenAsync(stoppingToken);
-                await using var transaction = await connection.BeginTransactionAsync(stoppingToken);
-
-                var entries = await connection.QueryAsync<OutboxEntry>(ClaimSql, transaction: transaction);
-
-                foreach (var entry in entries)
-                    await StartWorkflow(entry, stoppingToken);
-
-                await transaction.CommitAsync(stoppingToken);
+                await Dispatch(connectionString, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception exception)
             {
                 logger.LogError(exception, "Failed to dispatch outbox entries");
             }
-
-            await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
         }
     }
 
-    private async Task StartWorkflow(OutboxEntry entry, CancellationToken stoppingToken)
+    private async Task Dispatch(string connectionString, CancellationToken stoppingToken)
     {
-        var options = new WorkflowOptions
-        {
-            Id = entry.TransactionId,
-            TaskQueue = WorkflowDefinitions.DefaultTaskQueue,
-        };
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(stoppingToken);
+        await using var transaction = await connection.BeginTransactionAsync(stoppingToken);
 
-        try
+        var entries = await connection.QueryAsync<OutboxEntry>(ClaimSql, transaction: transaction);
+
+        foreach (var entry in entries)
         {
+            var options = new WorkflowOptions
+            {
+                Id = entry.TransactionId,
+                TaskQueue = WorkflowDefinitions.DefaultTaskQueue,
+                IdReusePolicy = WorkflowIdReusePolicy.RejectDuplicate,
+            };
+
             await temporalClient.StartWorkflowAsync(
                 (PublishWorkflow workflow) => workflow.RunAsync(
                     (ulong)entry.StackInstanceId,
@@ -60,10 +68,8 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
                 options
             );
         }
-        catch (WorkflowAlreadyStartedException)
-        {
-            logger.LogInformation("Workflow {TransactionId} already started", entry.TransactionId);
-        }
+
+        await transaction.CommitAsync(stoppingToken);
     }
 
     private sealed record OutboxEntry(string TransactionId, long StackInstanceId, long SystemInstanceId);

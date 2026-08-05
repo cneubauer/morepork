@@ -88,10 +88,11 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
     public async Task Lock(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId)
     {
         await transaction.Connection.ExecuteAsync(
-            "SELECT pg_advisory_xact_lock(@LockKey);",
+            "SELECT pg_advisory_xact_lock(@LockKey1, @LockKey2);",
             new
             {
-                LockKey = (long)(stackInstanceId ^ (systemInstanceId << 1))
+                LockKey1 = unchecked((int)stackInstanceId),
+                LockKey2 = unchecked((int)systemInstanceId),
             },
             transaction
         );
