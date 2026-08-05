@@ -10,6 +10,7 @@ public interface IDesiredStateStore<TDesiredState>
     Task<IDesiredState<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, bool force = false);
 
     Task Schedule(NpgsqlTransaction transaction, string transactionId, ulong stackInstanceId, ulong systemInstanceId);
+    Task Dispatched(NpgsqlTransaction transaction, string transactionId);
     
     Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
     Task<IEnumerable<IDesiredState<TDesiredState>>> List(ulong stackInstanceId, int offset, int limit);

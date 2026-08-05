@@ -4,10 +4,6 @@ using Temporalio.Api.Enums.V1;
 
 namespace WaaS.WebApi;
 
-/// <summary>
-/// The only component that starts workflows. Claims outbox entries and starts the workflow for
-/// each; the waiting request finds it by transaction ID.
-/// </summary>
 public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration configuration, ILogger<WorkflowExecutor> logger) : BackgroundService
 {
     private static readonly TimeSpan _sweepInterval = TimeSpan.FromSeconds(1);
@@ -15,7 +11,9 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
     private const string ClaimSql = """
         DELETE FROM outbox
         WHERE transaction_id IN (
-            SELECT transaction_id FROM outbox ORDER BY transaction_id FOR UPDATE SKIP LOCKED LIMIT 10
+            SELECT transaction_id FROM outbox
+            WHERE leased_until < (NOW() AT TIME ZONE 'utc')
+            ORDER BY transaction_id FOR UPDATE SKIP LOCKED LIMIT 10
         )
         RETURNING transaction_id AS TransactionId, stack_instance_id AS StackInstanceId, system_instance_id AS SystemInstanceId;
         """;
@@ -53,6 +51,12 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
 
         foreach (var entry in entries)
         {
+            logger.LogWarning(
+                "Recovering abandoned outbox entry {TransactionId} for stack instance {StackInstanceId}, system instance {SystemInstanceId}",
+                entry.TransactionId,
+                entry.StackInstanceId,
+                entry.SystemInstanceId);
+
             var options = new WorkflowOptions
             {
                 Id = entry.TransactionId,

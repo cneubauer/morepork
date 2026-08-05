@@ -181,8 +181,6 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             SystemInstanceId = (long?)desiredState.SystemInstanceId,
             desiredState.Namespace,
             desiredState.Zone,
-            // If force is true, keep the same version and overwrite the data,
-            // otherwise increment version and insert new row
             Version = (long)(force ? desiredState.Version : desiredState.Version + 1),
             desiredState.Data,
             desiredState.Tenant,
@@ -199,9 +197,10 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
     public async Task Schedule(NpgsqlTransaction transaction, string transactionId, ulong stackInstanceId, ulong systemInstanceId)
     {
         var sql = """
-            INSERT INTO outbox (transaction_id, stack_instance_id, system_instance_id)
-            VALUES (@TransactionId, @StackInstanceId, @SystemInstanceId)
-            ON CONFLICT DO NOTHING;
+            INSERT INTO outbox (transaction_id, stack_instance_id, system_instance_id, leased_until)
+            VALUES (@TransactionId, @StackInstanceId, @SystemInstanceId, now() + interval '2 seconds')
+            ON CONFLICT (transaction_id)
+                DO UPDATE SET leased_until = EXCLUDED.leased_until;
             """;
 
         await transaction.Connection.ExecuteAsync(sql, new
@@ -210,6 +209,14 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             StackInstanceId = (long)stackInstanceId,
             SystemInstanceId = (long)systemInstanceId,
         }, transaction);
+    }
+
+    public async Task Dispatched(NpgsqlTransaction transaction, string transactionId)
+    {
+        await transaction.Connection.ExecuteAsync(
+            "DELETE FROM outbox WHERE transaction_id = @TransactionId;",
+            new { TransactionId = transactionId },
+            transaction);
     }
 
     private const string ListSql = """
