@@ -18,7 +18,7 @@ public class MailConfiguration : Credential, IValidatableObject
     /// The port for sending mails
     /// </summary>
     /// <example>587</example>
-    [DefaultValue(25)]
+    [DefaultValue(25u)]
     [AllowedPorts(25, 465, 587)]
     public uint? HostPort { get; set; } = 25;
 
