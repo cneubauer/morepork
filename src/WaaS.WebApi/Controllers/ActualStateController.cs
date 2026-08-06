@@ -12,15 +12,11 @@ public class ActualStateController(ITemporalClient temporalClient) : ControllerB
     /// <remarks>
     /// Signals the waiting workflow with the actual state reported by the backend, acknowledging a published desired state.
     /// </remarks>
-    /// <param name="stackInstanceId" example="1234567">The stack instance identifier.</param>
-    /// <param name="systemInstanceId" example="5001234567">The system instance identifier.</param>
-    [HttpPut("{stackInstanceId}/{systemInstanceId}")]
-    public async Task<IActionResult> ReceiveActualState(
-        [FromRoute] ulong stackInstanceId,
-        [FromRoute] ulong systemInstanceId
-    )
+    /// <param name="transactionId" example="123e4567-e89b-12d3-a456-426614174000">The transaction identifier.</param>
+    [HttpPut("{transactionId}")]
+    public async Task<IActionResult> ReceiveActualState([FromRoute] string transactionId)
     {
-        var childWorkflowId = $"wait-notify-{stackInstanceId}-{systemInstanceId}";
+        var childWorkflowId = $"{transactionId}-await-notify";
 
         var workflowHandle = temporalClient.GetWorkflowHandle<WaitForAckWorkflow>(childWorkflowId);
 

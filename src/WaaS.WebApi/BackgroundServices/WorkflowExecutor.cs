@@ -68,6 +68,7 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
                 (PublishWorkflow workflow) => workflow.RunAsync(
                     (ulong)entry.StackInstanceId,
                     (ulong)entry.SystemInstanceId,
+                    entry.TransactionId,
                     new Space.Classic.ViewModel.SharedWebspace()),
                 options
             );

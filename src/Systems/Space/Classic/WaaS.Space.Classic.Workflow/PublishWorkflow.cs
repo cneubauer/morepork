@@ -6,7 +6,7 @@ using Temporalio.Workflows;
 public class PublishWorkflow
 {
     [WorkflowRun]
-    public async Task<WaasResult<SharedWebspaceData>> RunAsync(ulong stackInstanceId, ulong systemInstanceId, Space.Classic.ViewModel.SharedWebspace webspace)
+    public async Task<WaasResult<SharedWebspaceData>> RunAsync(ulong stackInstanceId, ulong systemInstanceId, string transactionId, Space.Classic.ViewModel.SharedWebspace webspace)
     {
         var options = new ActivityOptions { StartToCloseTimeout = TimeSpan.FromMinutes(2) };
 
@@ -17,7 +17,7 @@ public class PublishWorkflow
 
         var childOptions = new ChildWorkflowOptions
         {
-            Id = $"wait-notify-{desiredState.StackInstanceId}-{desiredState.SystemInstanceId}",
+            Id = $"{transactionId}-await-notify",
             ParentClosePolicy = ParentClosePolicy.Abandon,
             // IdReusePolicy = Temporalio.Api.Enums.V1.WorkflowIdReusePolicy.RejectDuplicate ,
         };

@@ -29,7 +29,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
         [FromHeader(Name = "Transaction-Id")] string? transactionId
     )
     {
-        transactionId ??= $"webspace-update-{Guid.NewGuid()}";
+        transactionId ??= $"{Guid.NewGuid()}";
 
         var tenantEntity = await tenantStore.Get(tenant);
 
@@ -51,7 +51,9 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
 
         desiredState = await desiredStateStore.Save(transaction, desiredState);
 
-        await desiredStateStore.Schedule(transaction, transactionId, stackInstanceId, systemInstanceId);
+        var workflowId = $"{transactionId}-webspace-update";
+
+        await desiredStateStore.Schedule(transaction, workflowId, stackInstanceId, systemInstanceId);
 
         await transaction.CommitAsync();
 
@@ -61,13 +63,13 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
 
         using var dispathTransaction = await desiredStateStore.BeginTransaction();
 
-        await desiredStateStore.Dispatched(dispathTransaction, transactionId);
+        await desiredStateStore.Dispatched(dispathTransaction, workflowId);
 
         await temporalClient.StartWorkflowAsync(
-            (PublishWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId, webspace),
+            (PublishWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId, transactionId, webspace),
             new WorkflowOptions
             {
-                Id = transactionId,
+                Id = workflowId,
                 TaskQueue = WorkflowDefinitions.DefaultTaskQueue,
                 IdReusePolicy = WorkflowIdReusePolicy.RejectDuplicate,
                 Rpc = new RpcOptions { CancellationToken = HttpContext.RequestAborted },
@@ -80,7 +82,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
         #region Await Result
 
         var result = await temporalClient
-            .GetWorkflowHandle(transactionId)
+            .GetWorkflowHandle(workflowId)
             .GetResultAsync<WaasResult<SharedWebspaceData>>(
                 rpcOptions: new RpcOptions { CancellationToken = HttpContext.RequestAborted });
 
