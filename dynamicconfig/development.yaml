@@ -1,0 +1,8 @@
+# Temporal server dynamic config.
+# Worker heartbeats need two flags: one to let workers send them, one to let
+# clients (the UI, `temporal worker list`) read them back. The UI's hint only
+# mentions the first, so enabling just that leaves the Workers tab empty.
+frontend.WorkerHeartbeatsEnabled:
+  - value: true
+frontend.ListWorkersEnabled:
+  - value: true

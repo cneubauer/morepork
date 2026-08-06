@@ -26,8 +26,11 @@ services:
       POSTGRES_USER: developer
       POSTGRES_PWD: dev
       POSTGRES_SEEDS: postgres
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development.yaml
     ports:
       - "7233:7233"
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig:ro
     # auto-setup creates databases and runs schema migrations before the frontend
     # binds 7233. Without this, dependents connect into that window and get refused.
     healthcheck:
