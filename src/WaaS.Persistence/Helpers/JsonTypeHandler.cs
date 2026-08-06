@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 
 namespace WaaS.Persistence;
 
-// A generic handler for any type T
 public class JsonTypeHandler<T> : SqlMapper.TypeHandler<T>
 {
     private static readonly JsonSerializerOptions _options = new()
@@ -14,20 +13,17 @@ public class JsonTypeHandler<T> : SqlMapper.TypeHandler<T>
         Converters = { new JsonStringEnumConverter(new JsonLowercasePolicy()) },
     };
 
-    // Serialize to JSON when saving to DB
     public override void SetValue(IDbDataParameter parameter, T? value)
     {
         parameter.Value = (object)JsonSerializer.Serialize(value, _options) ?? DBNull.Value;
-        parameter.DbType = DbType.Object; // Important for Npgsql to treat it as JSONB
+        parameter.DbType = DbType.Object;
         
-        // Npgsql specific: Explicitly set NpgsqlDbType to Jsonb
-        if (parameter is Npgsql.NpgsqlParameter npgsqlParam)
+        if (parameter is NpgsqlParameter npgsqlParam)
         {
             npgsqlParam.NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Jsonb;
         }
     }
 
-    // Deserialize from JSON when reading from DB
     public override T? Parse(object value)
     {
         if (value is string json)
