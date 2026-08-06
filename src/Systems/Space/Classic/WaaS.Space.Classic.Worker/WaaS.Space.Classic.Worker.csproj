@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WaaS.Space.Classic.Workflow\WaaS.Space.Classic.Workflow.csproj" />
+    <ProjectReference Include="..\..\WaaS.Space.Worker\WaaS.Space.Worker.csproj" />
   </ItemGroup>
 
 </Project>

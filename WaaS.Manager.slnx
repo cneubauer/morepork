@@ -11,6 +11,7 @@
   <Folder Name="/src/Systems/Space/">
     <Project Path="src/Systems/Space/WaaS.Space.DesiredState/WaaS.Space.DesiredState.csproj" />
     <Project Path="src/Systems/Space/WaaS.Space.ViewModel/WaaS.Space.ViewModel.csproj" />
+    <Project Path="src/Systems/Space/WaaS.Space.Worker/WaaS.Space.Worker.csproj" />
   </Folder>
   <Folder Name="/src/Systems/Space/Classic/">
     <Project Path="src/Systems/Space/Classic/WaaS.Space.Classic.DesiredState/WaaS.Space.Classic.DesiredState.csproj" />
