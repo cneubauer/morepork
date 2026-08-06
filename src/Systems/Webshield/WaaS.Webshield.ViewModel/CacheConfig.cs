@@ -7,6 +7,7 @@ namespace WaaS.Webshield.ViewModel;
 public class CacheConfig
 {
     /// <summary>The cache policy to apply.</summary>
+    /// <example>Basic</example>
     [DefaultValue(CachePolicy.Off)]
     public CachePolicy Policy { get; set; } = CachePolicy.Off;
 

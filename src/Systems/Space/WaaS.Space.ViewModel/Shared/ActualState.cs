@@ -7,6 +7,7 @@ public class ActualState
     /// <summary>
     /// The placement tags currently active on the backend (actual state).
     /// </summary>
+    /// <example>["shl:standard"]</example>
     [ReadOnly(true)]
     public IEnumerable<string>? PlacementTags { get; set; }
 

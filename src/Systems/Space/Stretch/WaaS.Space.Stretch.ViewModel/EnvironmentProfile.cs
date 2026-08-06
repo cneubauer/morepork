@@ -30,6 +30,7 @@ public class HomedirAlias
     /// <summary>
     /// Allowed value: <c>symlink</c>
     /// </summary>
+    /// <example>symlink</example>
     [Required]
     public required string Type { get; set; }
 
@@ -49,14 +50,16 @@ public class AliasTarget
     /// <summary>
     /// Allowed value: <c>absolute</c>, <c>user</c>
     /// </summary>
+    /// <example>user</example>
     [Required]
     public required string Type { get; set; }
 
     /// <summary>
     /// For type <c>absolute</c>, the path must match <c>^/+[^/\x00-\x1f:]{0,255}(/+[^/\x00-\x1f:]{1,255})*/*$(?!\n)</c> and not match <c>(^|/)\.\.(/|$)</c>
-    /// 
+    ///
     /// For type <c>user</c>, the path must match <c>^[^/\x00-\x1f:]{0,255}(/+[^/\x00-\x1f:]{1,255})*/*$(?!\n)</c> and not match <c>(^|/)\\.\\.(/|$)</c>
     /// </summary>
+    /// <example>shared</example>
     [Required]
     public required string Path { get; set; }
 
@@ -70,12 +73,14 @@ public class LinkPath
     /// <summary>
     /// Allowed value: <c>absolute</c>
     /// </summary>
+    /// <example>absolute</example>
     [Required]
     public required string Type { get; set; }
 
     /// <summary>
     /// For type <c>absolute</c>, the path must match <c>^/+[^/\x00-\x1f:]{0,255}(/+[^/\x00-\x1f:]{1,255})*/*$(?!\n)</c> and not match <c>(^|/)\.\.(/|$)</c>
     /// </summary>
+    /// <example>/shared-data</example>
     [Required]
     public required string Path { get; set; }
 

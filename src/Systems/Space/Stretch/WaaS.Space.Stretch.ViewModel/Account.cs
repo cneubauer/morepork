@@ -21,6 +21,7 @@ public class Account : Space.ViewModel.Account
     /// <summary>
     /// The password for the account.
     /// </summary>
+    /// <example>*****</example>
     [PasswordType(PasswordType.StretchSpace)]
     public override string? Password { get; set; }
 

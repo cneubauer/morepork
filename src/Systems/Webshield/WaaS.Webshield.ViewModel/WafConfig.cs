@@ -7,6 +7,7 @@ namespace WaaS.Webshield.ViewModel;
 public class WafConfig
 {
     /// <summary>The WAF ruleset to apply.</summary>
+    /// <example>Owasp</example>
     [DefaultValue(WafRuleset.Off)]
     public WafRuleset? Ruleset { get; set; } = WafRuleset.Off;
 

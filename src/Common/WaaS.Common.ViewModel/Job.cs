@@ -14,6 +14,7 @@ public struct Job
     /// <summary>
     /// An external reference ID, which can be passed by the client to identify the job.
     /// </summary>
+    /// <example>5c939221-6d3e-486f-956b-8e7b079f2c36</example>
     [ReadOnly(true)]
     public string? ReferenceId { get; set; }
 

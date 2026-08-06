@@ -24,8 +24,9 @@ public class Account : Credential, ITemporary, IValidatableObject
     public string? Username { get; set; }
 
     /// <summary>
-    /// The account password. 
+    /// The account password.
     /// </summary>
+    /// <example>*****</example>
     [PasswordType(PasswordType.StretchSpace)]
     public override string? Password { get; set; }
 
@@ -38,6 +39,7 @@ public class Account : Credential, ITemporary, IValidatableObject
     /// <summary>
     /// Defines protocols which the user can use to login.
     /// </summary>
+    /// <example>Sftp, Ssh</example>
     [Required]
     public SpaceAccessType AccessTypes { get; set; } = SpaceAccessType.Sftp | SpaceAccessType.Ssh;
 

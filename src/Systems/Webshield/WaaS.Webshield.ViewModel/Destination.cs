@@ -7,6 +7,7 @@ namespace WaaS.Webshield.ViewModel;
 public class Destination
 {
     /// <summary>The type of the destination.</summary>
+    /// <example>Proxy</example>
     [DefaultValue(DestinationType.Proxy)]
     public DestinationType Type { get; set; } = DestinationType.Proxy;
 
@@ -18,6 +19,7 @@ public class Destination
     public required string Target { get; set; }
 
     /// <summary>The SNI mode for the proxy mapping.</summary>
+    /// <example>Target</example>
     [DefaultValue(SniMode.Target)]
     public SniMode SniMode { get; set; } = SniMode.Target;
 }

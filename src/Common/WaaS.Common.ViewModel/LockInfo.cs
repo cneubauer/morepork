@@ -47,6 +47,7 @@ public class LockInfo
     /// <summary>
     /// The category of the lock. This value also defines the structure of the <see cref="CategoryProperties"/>.
     /// </summary>
+    /// <example>Default</example>
     public LockCategory Category { get; set; } = LockCategory.Default;
 
     /// <summary>
@@ -63,15 +64,18 @@ public class LockInfo
     /// <summary>
     /// The user who created the lock.
     /// </summary>
+    /// <example>my-user</example>
     public string? CreatedBy { get; set; }
 
     /// <summary>
     /// The last modification date of the lock.
     /// </summary>
+    /// <example>2023-11-14T09:12:00Z</example>
     public DateTime? Modified { get; set; }
 
     /// <summary>
     /// The user who last modified the lock.
     /// </summary>
+    /// <example>my-user</example>
     public string? ModifiedBy { get; set; }
 }

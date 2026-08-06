@@ -7,6 +7,7 @@ namespace WaaS.Webshield.ViewModel;
 public class Geofilter
 {
     /// <summary>Whether to allow or deny the specified countries.</summary>
+    /// <example>Allow</example>
     [Required]
     [DefaultValue(GeofilterType.Allow)]
     public required GeofilterType Type { get; set; }

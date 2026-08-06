@@ -7,6 +7,10 @@ namespace WaaS.Space.ViewModel;
 /// </summary>
 public class SpaceData
 {
+    /// <summary>
+    /// The hosting platform of the space.
+    /// </summary>
+    /// <example>Linux</example>
     [Required]
     public PlatformType? Platform { get; set; }
 
@@ -38,18 +42,21 @@ public class SpaceData
     /// <summary>
     /// Please see DataAccessDomains property.
     /// </summary>
+    /// <example>access-5001234567.some-product-domain.de</example>
     [Obsolete("Use DataAccessDomains property instead")]
     public string? DataAccessDomain { get; set; }
 
     /// <summary>
     /// Please see ManagedDomainBindings property.
     /// </summary>
+    /// <example>home-5001234567.some-product-domain.de</example>
     [Obsolete("Use ManagedDomainBindings property instead")]
     public string? HttpAccessDomain { get; set; }
 
     /// <summary>
     /// Please see ManagedDomainBindings property.
     /// </summary>
+    /// <example>php8.3</example>
     [Obsolete("Use ManagedDomainBindings property instead")]
     public string? HttpAccessDomainEnv { get; set; }
 

@@ -7,6 +7,7 @@ public class PlacementTagInfo
     /// <summary>
     /// The desired placement tags to set. Replaces any previously set tags.
     /// </summary>
+    /// <example>["shl:standard"]</example>
     public ICollection<string>? PlacementTags { get; set; }
 
     /// <summary>

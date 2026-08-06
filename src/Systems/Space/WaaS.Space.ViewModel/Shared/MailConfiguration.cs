@@ -30,6 +30,10 @@ public class MailConfiguration : Credential, IValidatableObject
     [MaxLength(511)]
     public string? Username { get; set; }
 
+    /// <summary>
+    /// The password for authenticating with the mail server.
+    /// </summary>
+    /// <example>*****</example>
     [PasswordType(PasswordType.Smtp)]
     public override string? Password { get; set; }
 

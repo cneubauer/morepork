@@ -8,6 +8,7 @@ public class DomainBinding
     /// <summary>
     /// An internal ID, set by the backend, when the domain has been created successfully.
     /// </summary>
+    /// <example>1230001</example>
     public ulong? DomainId { get; set; }
 
     /// <summary>

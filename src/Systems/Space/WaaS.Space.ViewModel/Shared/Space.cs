@@ -78,16 +78,19 @@ public class Space : ITemporary//, IValidatableObject
     /// <summary>
     /// Desired placement tags to influence server selection.
     /// </summary>
+    /// <example>["shl:standard"]</example>
     public List<string>? PlacementTags { get; set; }
 
     /// <summary>
     /// A list of placement tags set by a platform admin. Admin tags always overwrite any tenant tags.
     /// </summary>
+    /// <example>["shl:standard"]</example>
     public List<string>? AdminPlacementTags { get; set; }
 
     /// <summary>
     /// Whether the Biofilter (content scan) is enabled for this webspace.
     /// </summary>
+    /// <example>true</example>
     public bool? BiofilterEnabled { get; set; }
 
     // https://hosting-jira.1and1.org/browse/GPHWAAS-7935

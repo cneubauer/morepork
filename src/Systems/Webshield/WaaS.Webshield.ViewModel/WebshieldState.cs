@@ -7,9 +7,11 @@ public class WebshieldState
     public List<WebshieldMapping> Mappings { get; set; } = [];
 
     /// <summary>Public IP addresses assigned to default Webshield nodes.</summary>
+    /// <example>["123.123.123.123"]</example>
     public List<string> PublicIPs { get; set; } = [];
 
     /// <summary>Public IP addresses assigned to CDN Webshield nodes.</summary>
+    /// <example>["123.123.123.124"]</example>
     public List<string> CdnIPs { get; set; } = [];
 
     public void Tombstone() => Mappings = [];

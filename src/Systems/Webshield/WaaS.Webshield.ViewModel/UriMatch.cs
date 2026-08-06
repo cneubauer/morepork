@@ -16,10 +16,12 @@ public class UriMatch
     public required string Prefix { get; set; }
 
     /// <summary>The type of the URI match.</summary>
+    /// <example>Prefix</example>
     [DefaultValue(UriMatchType.Prefix)]
     public UriMatchType Type { get; set; } = UriMatchType.Prefix;
 
     /// <summary>The protocol of the URI to match.</summary>
+    /// <example>All</example>
     [DefaultValue(UriProtocol.All)]
     public UriProtocol Protocol { get; set; } = UriProtocol.All;
 }

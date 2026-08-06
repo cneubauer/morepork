@@ -25,12 +25,14 @@ public class WebshieldMapping : IValidatableObject
     /// <summary>
     /// The mode the proxy operates in for this domain.
     /// </summary>
+    /// <example>Proxy</example>
     [DefaultValue(WebshieldMode.Proxy)]
     public WebshieldMode Mode { get; set; } = WebshieldMode.Proxy;
 
     /// <summary>
     /// The Webshield type (node pool) on which the mapping is provisioned.
     /// </summary>
+    /// <example>Default</example>
     public WebshieldType WebshieldType { get; set; } = WebshieldType.Default;
 
     /// <summary>
@@ -47,12 +49,13 @@ public class WebshieldMapping : IValidatableObject
     /// <summary>
     /// IPv6 address assigned for this domain on the SSL proxies. Set by the server.
     /// </summary>
-    /// <example>2001:db8::1</example>
+    /// <example>aa42:bb42:cc42:42:123:123:123:123</example>
     public string? IpV6 { get; set; }
 
     /// <summary>
     /// Whether the domain mapping is active on the backend system.
     /// </summary>
+    /// <example>true</example>
     public bool IsEnabled { get; set; } = true;
 
     /// <summary>
