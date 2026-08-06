@@ -24,7 +24,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             applied,
             expired
         FROM desired_state
-        WHERE stack_instance_id = @StackInstanceId
+        WHERE (@Tenant IS NULL OR tenant = @Tenant)
+          AND stack_instance_id = @StackInstanceId
           AND system_instance_id = @SystemInstanceId
           AND state_namespace = @Namespace
           AND (@Version IS NULL OR state_version = @Version)
@@ -148,7 +149,6 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
 
         return desiredState;
     }
-
     public async Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         await using var connection = new NpgsqlConnection(connectionString);
@@ -162,11 +162,36 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             Version = (long?)version,
         });
     }
+    public async Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        return await connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
+        {
+            Tenant = tenantId,
+            StackInstanceId = (long)stackInstanceId,
+            SystemInstanceId = (long)systemInstanceId,
+            Namespace = _namespace,
+            Version = (long?)version,
+        });
+    }
 
     public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         return await transaction.Connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
         {
+            StackInstanceId = (long)stackInstanceId,
+            SystemInstanceId = (long)systemInstanceId,
+            Namespace = _namespace,
+            Version = (long?)version,
+        });
+    }
+    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
+    {
+        return await transaction.Connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
+        {
+            Tenant = tenantId,
             StackInstanceId = (long)stackInstanceId,
             SystemInstanceId = (long)systemInstanceId,
             Namespace = _namespace,
@@ -234,13 +259,14 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         OFFSET @Offset LIMIT @Limit
         """;
 
-    public async Task<IEnumerable<IDesiredState<TDesiredState>>> List(ulong stackInstanceId, int offset, int limit)
+    public async Task<IEnumerable<IDesiredState<TDesiredState>>> List(int tenantId, ulong stackInstanceId, int offset, int limit)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
 
         return await connection.QueryAsync<DesiredState<TDesiredState>>(ListSql, new
         {
+            Tenant = tenantId,
             StackInstanceId = (long)stackInstanceId,
             Namespace = _namespace,
             Offset = offset,

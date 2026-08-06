@@ -6,10 +6,23 @@ namespace WaaS.WebApi;
 
 [ApiController]
 [Route("api/{tenant}/stack-instances/{stackInstanceId}/stretchspaces")]
-public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredStateStore<SharedWebspaceData> desiredStateStore) : ControllerBase
+public class SharedWebspaceController(ITemporalClient temporalClient, ITenantStore tenantStore, IDesiredStateStore<SharedWebspaceData> desiredStateStore) : ControllerBase
 {
+    /// <summary>
+    /// Update Shared Webspace
+    /// </summary>
+    /// <remarks>
+    /// Updates the desired state of a shared webspace. This operation is asynchronous and may take some time to complete. The response will indicate whether the update was accepted, completed successfully, or if there were validation errors.
+    /// </remarks>
+    /// <param name="tenant">The tenant identifier.</param>
+    /// <param name="stackInstanceId">The stack instance identifier.</param>
+    /// <param name="systemInstanceId">The system instance identifier.</param>
+    /// <param name="webspace">The shared webspace data to update.</param>
+    /// <param name="transactionId">The transaction identifier.</param>
+    /// <returns>The updated shared webspace.</returns>
     [HttpPut("{systemInstanceId}")]
     public async Task<IActionResult> UpdateSharedWebspace(
+        [FromRoute] string tenant,
         [FromRoute] ulong stackInstanceId,
         [FromRoute] ulong systemInstanceId,
         [FromBody] Space.Classic.ViewModel.SharedWebspace webspace,
@@ -18,13 +31,18 @@ public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredSt
     {
         transactionId ??= $"waas-update-{Guid.NewGuid()}";
 
+        var tenantEntity = tenantStore.Get(tenant);
+
+        if (tenantEntity is null)
+            return NotFound();
+
         #region Update Desired State
 
         using var transaction = await desiredStateStore.BeginTransaction();
 
         await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
 
-        var desiredState = await desiredStateStore.Read(transaction, stackInstanceId, systemInstanceId);
+        var desiredState = await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId);
 
         if (desiredState is null)
             return NotFound();
@@ -77,10 +95,29 @@ public class SharedWebspaceController(ITemporalClient temporalClient, IDesiredSt
         return Ok(result.DesiredState!.Data.Space.ToViewModel<Space.Classic.ViewModel.SharedWebspace>(result.DesiredState.SystemInstanceId));
     }
 
+    /// <summary>
+    /// Read Shared Webspace
+    /// </summary>
+    /// <remarks>
+    /// Retrieves the desired state of a shared webspace.
+    /// </remarks>
+    /// 
+    /// <param name="stackInstanceId"></param>
+    /// <param name="systemInstanceId"></param>
+    /// <returns>The shared webspace data.</returns>
     [HttpGet("{systemInstanceId}")]
-    public async Task<IActionResult> ReadSharedWebspace([FromRoute] ulong stackInstanceId, [FromRoute] ulong systemInstanceId)
+    public async Task<IActionResult> ReadSharedWebspace(
+        [FromRoute] string tenant,
+        [FromRoute] ulong stackInstanceId,
+        [FromRoute] ulong systemInstanceId
+    )
     {
-        var desiredState = await desiredStateStore.Read(stackInstanceId, systemInstanceId);
+        var tenantEntity = tenantStore.Get(tenant);
+
+        if (tenantEntity is null)
+            return NotFound();
+
+        var desiredState = await desiredStateStore.Read(tenantEntity.Id, stackInstanceId, systemInstanceId);
 
         if (desiredState is null)
             return NotFound();
