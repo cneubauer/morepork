@@ -19,11 +19,11 @@ public class PublishWorkflow
         {
             Id = $"wait-notify-{desiredState.StackInstanceId}-{desiredState.SystemInstanceId}",
             ParentClosePolicy = ParentClosePolicy.Abandon,
-            IdReusePolicy = Temporalio.Api.Enums.V1.WorkflowIdReusePolicy.TerminateIfRunning,
+            // IdReusePolicy = Temporalio.Api.Enums.V1.WorkflowIdReusePolicy.RejectDuplicate ,
         };
 
         await Workflow.StartChildWorkflowAsync(
-            (WaitForAckWorkflow child) => child.RunAsync(stackInstanceId, systemInstanceId, webspace),
+            (WaitForAckWorkflow child) => child.RunAsync(stackInstanceId, systemInstanceId),
             childOptions
         );
 

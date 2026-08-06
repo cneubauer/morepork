@@ -29,7 +29,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
         [FromHeader(Name = "Transaction-Id")] string? transactionId
     )
     {
-        transactionId ??= $"waas-update-{Guid.NewGuid()}";
+        transactionId ??= $"webspace-update-{Guid.NewGuid()}";
 
         var tenantEntity = await tenantStore.Get(tenant);
 

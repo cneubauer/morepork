@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Temporalio.Client;
 
 namespace WaaS.WebApi;
 
@@ -13,16 +12,20 @@ public class ActualStateController(ITemporalClient temporalClient) : ControllerB
     /// <remarks>
     /// Signals the waiting workflow with the actual state reported by the backend, acknowledging a published desired state.
     /// </remarks>
-    /// <param name="desiredState">The actual state as reported by the backend.</param>
-    [HttpPut]
-    public async Task<IActionResult> ReceiveActualState([FromBody] DesiredState<SharedWebspaceData> desiredState)
+    /// <param name="stackInstanceId" example="1234567">The stack instance identifier.</param>
+    /// <param name="systemInstanceId" example="5001234567">The system instance identifier.</param>
+    [HttpPut("{stackInstanceId}/{systemInstanceId}")]
+    public async Task<IActionResult> ReceiveActualState(
+        [FromRoute] ulong stackInstanceId,
+        [FromRoute] ulong systemInstanceId
+    )
     {
-        var childWorkflowId = $"wait-notify-{desiredState.StackInstanceId}-{desiredState.SystemInstanceId}";
+        var childWorkflowId = $"wait-notify-{stackInstanceId}-{systemInstanceId}";
 
         var workflowHandle = temporalClient.GetWorkflowHandle<WaitForAckWorkflow>(childWorkflowId);
 
         await workflowHandle.SignalAsync(
-            workflow => workflow.ReceiveCompletionSignalAsync(desiredState)
+            workflow => workflow.ReceiveCompletionSignalAsync()
         );
 
         return Ok();
