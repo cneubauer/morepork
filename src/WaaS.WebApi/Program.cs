@@ -1,13 +1,20 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 
 builder.Services.AddDesiredStateStore<SharedWebspaceData>(
-    builder.Configuration.GetConnectionString("DesiredStateStore")!);
+    builder.Configuration.GetConnectionString("WaaS")!);
 
 builder.Services.AddTenantStore(builder.Configuration.GetConnectionString("TenantStore")!);
 
@@ -25,9 +32,7 @@ app.MapOpenApi();
 app.MapScalarApiReference(options =>
 {
     // Optional configuration for Scalar
-    options
-        .WithTitle("WaaS Manager")
-        .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+    options.WithTitle("WaaS Manager");
 });
 
 

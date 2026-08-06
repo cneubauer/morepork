@@ -87,12 +87,12 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
         #endregion
 
         if (result is null)
-            return Accepted(desiredState!.Data.Space.ToViewModel<Space.Classic.ViewModel.SharedWebspace>(desiredState.SystemInstanceId));
+            return Accepted(desiredState!.Data.Space.ToViewModel(desiredState.SystemInstanceId!.Value));
 
         if (result.ValidationErrors.Count > 0)
             return BadRequest(new { Errors = result.ValidationErrors });
 
-        return Ok(result.DesiredState!.Data.Space.ToViewModel<Space.Classic.ViewModel.SharedWebspace>(result.DesiredState.SystemInstanceId));
+        return Ok(result.DesiredState!.Data.Space.ToViewModel(result.DesiredState.SystemInstanceId!.Value));
     }
 
     /// <summary>
@@ -122,7 +122,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
         if (desiredState is null)
             return NotFound();
 
-        var webspace = desiredState.Data.Space.ToViewModel<Space.Classic.ViewModel.SharedWebspace>(desiredState.SystemInstanceId);
+        var webspace = desiredState.Data.Space.ToViewModel(desiredState.SystemInstanceId!.Value);
 
         return Ok(webspace);
     }

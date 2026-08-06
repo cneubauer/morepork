@@ -20,7 +20,7 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var connectionString = configuration.GetConnectionString("DesiredState")!;
+        var connectionString = configuration.GetConnectionString("WaaS")!;
 
         using var timer = new PeriodicTimer(_sweepInterval);
 
