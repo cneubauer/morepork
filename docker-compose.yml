@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: waas
-      POSTGRES_PASSWORD: waas
-      POSTGRES_DB: waas
+      POSTGRES_USER: developer
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: morepork
     ports:
       - "5432:5432"
     volumes:
       - ./sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U waas -d waas"]
+      test: ["CMD-SHELL", "pg_isready"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -23,8 +23,8 @@ services:
     environment:
       DB: postgres12
       DB_PORT: 5432
-      POSTGRES_USER: waas
-      POSTGRES_PWD: waas
+      POSTGRES_USER: developer
+      POSTGRES_PWD: dev
       POSTGRES_SEEDS: postgres
     ports:
       - "7233:7233"

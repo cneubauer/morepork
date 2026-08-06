@@ -31,7 +31,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
     {
         transactionId ??= $"waas-update-{Guid.NewGuid()}";
 
-        var tenantEntity = tenantStore.Get(tenant);
+        var tenantEntity = await tenantStore.Get(tenant);
 
         if (tenantEntity is null)
             return NotFound();
@@ -112,7 +112,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
         [FromRoute] ulong systemInstanceId
     )
     {
-        var tenantEntity = tenantStore.Get(tenant);
+        var tenantEntity = await tenantStore.Get(tenant);
 
         if (tenantEntity is null)
             return NotFound();

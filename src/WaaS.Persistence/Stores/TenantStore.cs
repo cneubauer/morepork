@@ -4,11 +4,11 @@ public class TenantStore(string connectionString) : ITenantStore
 {
     public async Task<Tenant?> Get(string tenantName)
     {
-        var sql = @"
+        var sql = """
             SELECT id, name, profile
-            FROM tenant_profile
-            WHERE name = @TenantName
-        ";
+                FROM tenant
+                WHERE name = @TenantName
+        """;
 
         using var connection = new NpgsqlConnection(connectionString);
 
@@ -20,11 +20,11 @@ public class TenantStore(string connectionString) : ITenantStore
 
     public async Task<Tenant?> Get(short tenantId)
     {
-        var sql = @"
+        var sql = """
             SELECT id, name, profile
-            FROM tenant_profile
-            WHERE id = @TenantId
-        ";
+                FROM tenant
+                WHERE id = @TenantId
+        """;
 
         using var connection = new NpgsqlConnection(connectionString);
 

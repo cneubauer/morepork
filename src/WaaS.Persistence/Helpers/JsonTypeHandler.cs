@@ -1,6 +1,6 @@
 using System.Data;
 using System.Text.Json;
-using Dapper;
+using System.Text.Json.Serialization;
 
 namespace WaaS.Persistence;
 
@@ -11,6 +11,7 @@ public class JsonTypeHandler<T> : SqlMapper.TypeHandler<T>
     {
         PropertyNamingPolicy = new JsonLowercasePolicy(),
         PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter(new JsonLowercasePolicy()) },
     };
 
     // Serialize to JSON when saving to DB

@@ -7,7 +7,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
 builder.Services.AddDesiredStateStore<SharedWebspaceData>(
-    builder.Configuration.GetConnectionString("DesiredState")!);
+    builder.Configuration.GetConnectionString("DesiredStateStore")!);
+
+builder.Services.AddTenantStore(builder.Configuration.GetConnectionString("TenantStore")!);
 
 builder.Services.AddTemporalClient(options =>
 {
