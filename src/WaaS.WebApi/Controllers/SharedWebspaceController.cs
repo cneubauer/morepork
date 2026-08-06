@@ -14,11 +14,11 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
     /// <remarks>
     /// Updates the desired state of a shared webspace. This operation is asynchronous and may take some time to complete. The response will indicate whether the update was accepted, completed successfully, or if there were validation errors.
     /// </remarks>
-    /// <param name="tenant">The tenant identifier.</param>
-    /// <param name="stackInstanceId">The stack instance identifier.</param>
-    /// <param name="systemInstanceId">The system instance identifier.</param>
+    /// <param name="tenant" example="demo">The tenant identifier.</param>
+    /// <param name="stackInstanceId" example="1234567">The stack instance identifier.</param>
+    /// <param name="systemInstanceId" example="5001234567">The system instance identifier.</param>
     /// <param name="webspace">The shared webspace data to update.</param>
-    /// <param name="transactionId">The transaction identifier.</param>
+    /// <param name="transactionId" example="waas-update-3fa85f64-5717-4562-b3fc-2c963f66afa6">The transaction identifier. Defaults to a generated value when omitted.</param>
     /// <returns>The updated shared webspace.</returns>
     [HttpPut("{systemInstanceId}")]
     public async Task<IActionResult> UpdateSharedWebspace(
@@ -101,9 +101,9 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
     /// <remarks>
     /// Retrieves the desired state of a shared webspace.
     /// </remarks>
-    /// 
-    /// <param name="stackInstanceId"></param>
-    /// <param name="systemInstanceId"></param>
+    /// <param name="tenant" example="demo">The tenant identifier.</param>
+    /// <param name="stackInstanceId" example="1234567">The stack instance identifier.</param>
+    /// <param name="systemInstanceId" example="5001234567">The system instance identifier.</param>
     /// <returns>The shared webspace data.</returns>
     [HttpGet("{systemInstanceId}")]
     public async Task<IActionResult> ReadSharedWebspace(

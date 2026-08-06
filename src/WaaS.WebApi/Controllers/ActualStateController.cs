@@ -7,6 +7,13 @@ namespace WaaS.WebApi;
 [Route("api/actual-state")]
 public class ActualStateController(ITemporalClient temporalClient) : ControllerBase
 {
+    /// <summary>
+    /// Receive Actual State
+    /// </summary>
+    /// <remarks>
+    /// Signals the waiting workflow with the actual state reported by the backend, acknowledging a published desired state.
+    /// </remarks>
+    /// <param name="desiredState">The actual state as reported by the backend.</param>
     [HttpPut]
     public async Task<IActionResult> ReceiveActualState([FromBody] DesiredState<SharedWebspaceData> desiredState)
     {
