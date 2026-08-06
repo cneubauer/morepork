@@ -1,14 +1,9 @@
 INSERT INTO tenant (id, name) VALUES (1, 'demo');
 
-INSERT INTO stack_instance (id, state_tenant, state_zone) VALUES (1, 1, 1);
+INSERT INTO stack_instance (id, state_tenant, state_zone) VALUES (1234567, 1, 1);
 
-INSERT INTO system_instance (id, stack_instance_id) VALUES (5000000001, 1);
+INSERT INTO system_instance (id, stack_instance_id) VALUES (5001234567, 1234567);
 
-INSERT INTO desired_state (
-    stack_instance_id, system_instance_id, state_namespace, state_zone, state_version,
-    tenant, tombstoned, data, created
-)
-VALUES (
-    1, 5000000001, 3, 1, 0,
-    1, false, '{"webspace": {}}'::jsonb, (NOW() AT TIME ZONE 'utc')
-);
+
+INSERT INTO public.desired_state (stack_instance_id,state_namespace,state_zone,state_version,tombstoned,"data",created,applied,expired,system_instance_id,tenant,lastchange,next_check,archive_id) VALUES
+	 (1234567,3,1,1,false,'{"webspace": {"ipset": {"ipv4": "10.88.74.100", "ipv6": "fd87:aa51:5c43:40:10:88:74:100"}, "owner": {"gid": 600, "uid": 67129811, "username": "ws67129811", "groupname": "ftpusers"}, "state": "enabled", "limits": {"diskquota": 5000000000, "resourcelevel": "M", "diskquotaactual": 5000000000}, "region": "europe", "domains": [{"state": "enabled", "domainid": 15105352, "isenabled": true, "lockitems": [], "domainname": "foo.de", "targetpath": {"dirpath": "/", "dirtype": "user"}, "connecttype": "0", "environment": "php8.3", "referenceid": "foo.de", "correlationid": "0"}, {"state": "enabled", "domainid": 15105353, "isenabled": true, "lockitems": [], "domainname": "www.foo.de", "targetpath": {"dirpath": "/", "dirtype": "user"}, "connecttype": "0", "environment": "php8.3", "referenceid": "www.foo.de", "correlationid": "0"}], "accounts": [{"state": "enabled", "username": "a62123", "accountid": 62123, "lockitems": [], "temporary": {}, "accesstype": "sftp", "targetpath": {"dirpath": "/", "dirtype": "user"}, "accounttype": "standard", "referenceid": "5c9392216d3e486f956b8e7b079f2c36", "correlationid": "0", "homedirpubkeys": true, "securepasswordtoken": "03a964755ddf4e6b8b0dc5ed35926a19"}, {"state": "enabled", "username": "a25255", "accountid": 25255, "lockitems": [], "temporary": {}, "accesstype": "sftp,ssh", "targetpath": {"dirpath": "/", "dirtype": "user"}, "accounttype": "standard", "referenceid": "bd075fa6bdb8434d99dcb6b5e7acd570", "correlationid": "1", "homedirpubkeys": true, "securepasswordtoken": "818d40fc7b9a449f99dd9dc81e52c4cd"}, {"state": "enabled", "username": "a9365", "accountid": 9365, "lockitems": [], "temporary": {}, "accesstype": "sftp", "targetpath": {"dirpath": "/", "dirtype": "user"}, "accounttype": "standard", "referenceid": "d0ce03534a284081a66117567fb6a574", "correlationid": "0", "homedirpubkeys": true, "securepasswordtoken": "d1542e7e54124f628fff4d5a8cb38b44"}], "hostname": "ac1infongws1.schlund.de", "platform": "linux", "lockitems": [], "webspaceid": 4308975658, "placementtags": ["shl:standard"], "biofilterenabled": true, "dataaccessdomains": [{"domainname": "access-5004265496.ac1-product.lan"}], "httpaccessdomains": [{"domainid": 15105354, "lockitems": [], "domainname": "home-5004265496.ac1-product.lan", "targetpath": {"dirpath": "/", "dirtype": "user"}, "connecttype": "0", "environment": "php8.3", "correlationid": "http-access-domain-correlation-id"}], "mailconfiguration": {"host": "some-mail-host.de", "hostport": 25, "username": "some-mail-user", "defaultsender": "some-mail@domain.de", "securepasswordtoken": "ca61393feb5842baaad3fae76393728f", "defaultenvelopefrompolicy": "default_sender"}, "placementtagsactual": ["shl:standard"]}}','2026-07-14 10:06:47.495','2026-07-14 10:06:48.660',NULL,5001234567,1,'2026-07-14 10:06:48.739',NULL,987654321);
