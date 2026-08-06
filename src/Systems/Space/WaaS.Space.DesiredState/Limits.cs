@@ -14,5 +14,5 @@ public class Limits
 
     public string ResourceLevel { get; set; } = "";
 
-    public AutoQuotaInfo AutoQuota { get; set; } = new();
+    public AutoQuotaInfo? AutoQuota { get; set; }
 }

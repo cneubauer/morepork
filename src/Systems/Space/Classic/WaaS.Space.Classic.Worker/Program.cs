@@ -5,7 +5,7 @@ using WaaS.Workflow;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DesiredState")!;
+var connectionString = builder.Configuration.GetConnectionString("Morepork")!;
 
 builder.Services.AddDesiredStateStore<SharedWebspaceData>(connectionString);
 

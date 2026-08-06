@@ -1,0 +1,21 @@
+# Build output — must never enter the context, it invalidates caching and can
+# leak host-built binaries into the image.
+**/bin/
+**/obj/
+
+# VCS and tooling
+.git/
+.gitignore
+.vs/
+.vscode/
+.idea/
+**/*.user
+
+# Not needed to build or run any artifact
+docs/
+plans/
+refs/
+README.md
+**/*.md
+docker-compose*.yml
+.dockerignore

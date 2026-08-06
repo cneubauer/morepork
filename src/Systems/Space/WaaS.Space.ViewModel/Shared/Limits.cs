@@ -15,7 +15,6 @@ public class Limits
     /// The resource level tier for this webspace.
     /// </summary>
     /// <example>M</example>
-    [Required]
     [Options("XS", "S", "M", "L", "XL", "XXL", "Z", AllowNull = true)]
     public string? ResourceLevel { get; set; }
 
