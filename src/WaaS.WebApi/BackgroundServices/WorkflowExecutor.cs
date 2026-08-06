@@ -10,12 +10,12 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
 
     private const string ClaimSql = """
         DELETE FROM outbox
-        WHERE transaction_id IN (
-            SELECT transaction_id FROM outbox
+        WHERE workflow_id IN (
+            SELECT workflow_id FROM outbox
             WHERE leased_until < (NOW() AT TIME ZONE 'utc')
-            ORDER BY transaction_id FOR UPDATE SKIP LOCKED LIMIT 10
+            ORDER BY workflow_id FOR UPDATE SKIP LOCKED LIMIT 10
         )
-        RETURNING transaction_id AS TransactionId, stack_instance_id AS StackInstanceId, system_instance_id AS SystemInstanceId;
+        RETURNING workflow_id AS WorkflowId, stack_instance_id AS StackInstanceId, system_instance_id AS SystemInstanceId;
         """;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -53,23 +53,23 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
         {
             logger.LogWarning(
                 "Recovering abandoned outbox entry {TransactionId} for stack instance {StackInstanceId}, system instance {SystemInstanceId}",
-                entry.TransactionId,
+                entry.WorkflowId,
                 entry.StackInstanceId,
                 entry.SystemInstanceId);
 
             var options = new WorkflowOptions
             {
-                Id = entry.TransactionId,
+                Id = entry.WorkflowId,
                 TaskQueue = WorkflowDefinitions.DefaultTaskQueue,
                 IdReusePolicy = WorkflowIdReusePolicy.RejectDuplicate,
             };
 
             await temporalClient.StartWorkflowAsync(
                 (PublishWorkflow workflow) => workflow.RunAsync(
+                    entry.WorkflowId,
                     (ulong)entry.StackInstanceId,
-                    (ulong)entry.SystemInstanceId,
-                    entry.TransactionId,
-                    new Space.Classic.ViewModel.SharedWebspace()),
+                    (ulong)entry.SystemInstanceId
+                ),
                 options
             );
         }
@@ -77,5 +77,5 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
         await transaction.CommitAsync(stoppingToken);
     }
 
-    private sealed record OutboxEntry(string TransactionId, long StackInstanceId, long SystemInstanceId);
+    private sealed record OutboxEntry(string WorkflowId, long StackInstanceId, long SystemInstanceId);
 }

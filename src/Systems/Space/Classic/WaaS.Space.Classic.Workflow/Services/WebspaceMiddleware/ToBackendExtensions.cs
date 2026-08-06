@@ -1,10 +1,10 @@
-using WaaS.Space.Worker;
+using WaaS.Space.Workflow;
 
-namespace WaaS.Space.Classic.Worker;
+namespace WaaS.Space.Classic.Workflow;
 
-public static class ToTechMwExtensions
+public static class ToBackendExtensions
 {
-    public static WebspaceMiddleware.Webspace ToTechModel(this IDesiredState<SharedWebspaceData> desiredState, string extCorrelationId, string[]? stackInstanceTags)
+    public static WebspaceMiddleware.Webspace ToBackendModel(this IDesiredState<SharedWebspaceData> desiredState, string extCorrelationId, string[]? stackInstanceTags)
     {
         var spaceData = desiredState.Data.Space;
 
@@ -25,14 +25,14 @@ public static class ToTechMwExtensions
 
         var customerDomains = spaceData.Domains?
             .Where(x => x.IsEnabled ?? true)
-            .Select(x => x.ToTechModel());
+            .Select(x => x.ToBackendModel());
 
         if (customerDomains != null)
             domains.AddRange(customerDomains);
 
         var httpAccess = spaceData.HttpAccessDomains?
             .FirstOrDefault()?
-            .ToTechModel("http-access-domain-correlation-id");
+            .ToBackendModel("http-access-domain-correlation-id");
 
         if (httpAccess != null)
             domains.Add(httpAccess);
@@ -43,10 +43,10 @@ public static class ToTechMwExtensions
         var allAccounts = new List<SpaceMiddleware.Account>();
 
         if (spaceData.Accounts != null && spaceData.Accounts.Count != 0)
-            allAccounts.AddRange(spaceData.Accounts.Select(account => account.ToTechModel()));
+            allAccounts.AddRange(spaceData.Accounts.Select(account => account.ToBackendModel()));
 
         if (spaceData.AdminAccounts != null && spaceData.AdminAccounts.Count != 0)
-            allAccounts.AddRange(spaceData.AdminAccounts.Select(account => account.ToTechModel()));
+            allAccounts.AddRange(spaceData.AdminAccounts.Select(account => account.ToBackendModel()));
 
         techWebspace.Accounts = allAccounts;
 
@@ -123,7 +123,7 @@ public static class ToTechMwExtensions
         return techWebspace;
     }
 
-    public static SpaceMiddleware.DomainBinding ToTechModel(this Space.DesiredState.DomainBinding<string> domain, string extCorrelationId = "0")
+    public static SpaceMiddleware.DomainBinding ToBackendModel(this Space.DesiredState.DomainBinding<string> domain, string extCorrelationId = "0")
         => new()
         {
             ExternalReference = domain.ReferenceId,
@@ -139,7 +139,7 @@ public static class ToTechMwExtensions
             }
         };
 
-    public static SpaceMiddleware.Account ToTechModel(this Space.DesiredState.Account account)
+    public static SpaceMiddleware.Account ToBackendModel(this Space.DesiredState.Account account)
         => new()
         {
             ExternalReference = account.ReferenceId,

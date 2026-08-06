@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Temporalio.Api.Enums.V1;
-using Temporalio.Exceptions;
 
 namespace WaaS.WebApi;
 
@@ -66,7 +65,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
         await desiredStateStore.Dispatched(dispathTransaction, workflowId);
 
         await temporalClient.StartWorkflowAsync(
-            (PublishWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId, transactionId, webspace),
+            (PublishWorkflow workflow) => workflow.RunAsync(transactionId, stackInstanceId, systemInstanceId),
             new WorkflowOptions
             {
                 Id = workflowId,
@@ -83,7 +82,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
 
         var result = await temporalClient
             .GetWorkflowHandle(workflowId)
-            .GetResultAsync<WaasResult<SharedWebspaceData>>(
+            .GetResultAsync<WaasContext<SharedWebspaceData>>(
                 rpcOptions: new RpcOptions { CancellationToken = HttpContext.RequestAborted });
 
         #endregion

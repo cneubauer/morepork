@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WaaS.Space.Classic.DesiredState\WaaS.Space.Classic.DesiredState.csproj" />
     <ProjectReference Include="..\WaaS.Space.Classic.ViewModel\WaaS.Space.Classic.ViewModel.csproj" />
+    <ProjectReference Include="..\..\WaaS.Space.Workflow\WaaS.Space.Workflow.csproj" />
     <ProjectReference Include="..\..\..\..\Common\WaaS.Common.Workflow\WaaS.Common.Workflow.csproj" />
   </ItemGroup>
 

@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace SpaceMiddleware;
 
 public class Error

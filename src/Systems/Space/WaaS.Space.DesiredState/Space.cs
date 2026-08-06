@@ -7,7 +7,7 @@ public class Space : WaasResource
 {
     public Platform Platform { get; set; }
 
-    public string Region { get; set; } = "";
+    public string? Region { get; set; }
 
     /// <summary>
     /// State of the webspace, reported by the Webspace Middleware.
@@ -17,7 +17,7 @@ public class Space : WaasResource
     /// <summary>
     /// Host of the webspace, reported by the Webspace Middleware.
     /// </summary>
-    public string Hostname { get; set; } = "";
+    public string? Hostname { get; set; }
 
     /// <summary>
     /// IPs of the web server the webspace is located on.

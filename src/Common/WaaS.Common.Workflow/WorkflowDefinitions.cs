@@ -1,4 +1,4 @@
-namespace WaaS.Workflow;
+namespace WaaS.Common.Workflow;
 
 public static class WorkflowDefinitions
 {

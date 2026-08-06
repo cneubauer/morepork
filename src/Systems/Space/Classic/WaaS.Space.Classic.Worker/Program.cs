@@ -1,7 +1,6 @@
 using Temporalio.Extensions.Hosting;
-using WaaS.Persistence;
-using WaaS.Space.Classic.DesiredState;
-using WaaS.Workflow;
+using WaaS.Space.Classic.Workflow;
+using WaaS.Common.Workflow;
 
 var builder = Host.CreateApplicationBuilder(args);
 

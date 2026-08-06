@@ -1,4 +1,4 @@
-﻿namespace WaaS.Workflow;
+﻿namespace WaaS.Space.Classic.Workflow;
 
 using Temporalio.Workflows;
 
@@ -6,12 +6,17 @@ using Temporalio.Workflows;
 public class PublishWorkflow
 {
     [WorkflowRun]
-    public async Task<WaasResult<SharedWebspaceData>> RunAsync(ulong stackInstanceId, ulong systemInstanceId, string transactionId, Space.Classic.ViewModel.SharedWebspace webspace)
+    public async Task<WaasContext<SharedWebspaceData>> RunAsync(string transactionId, ulong stackInstanceId, ulong systemInstanceId)
     {
         var options = new ActivityOptions { StartToCloseTimeout = TimeSpan.FromMinutes(2) };
 
-        var desiredState = await Workflow.ExecuteActivityAsync(
-            (SharedWebspaceActivities act) => act.Read(stackInstanceId, systemInstanceId),
+        var waasContext = await Workflow.ExecuteActivityAsync(
+            (SharedWebspaceActivities act) => act.Read(transactionId, stackInstanceId, systemInstanceId),
+            options
+        ) ?? throw new Exception($"Desired state not found for stackInstanceId: {stackInstanceId}, systemInstanceId: {systemInstanceId}");
+
+        waasContext = await Workflow.ExecuteActivityAsync(
+            (SharedWebspaceActivities act) => act.Publish(waasContext),
             options
         ) ?? throw new Exception($"Desired state not found for stackInstanceId: {stackInstanceId}, systemInstanceId: {systemInstanceId}");
 
@@ -19,7 +24,6 @@ public class PublishWorkflow
         {
             Id = $"{transactionId}-await-notify",
             ParentClosePolicy = ParentClosePolicy.Abandon,
-            // IdReusePolicy = Temporalio.Api.Enums.V1.WorkflowIdReusePolicy.RejectDuplicate ,
         };
 
         await Workflow.StartChildWorkflowAsync(
@@ -27,10 +31,6 @@ public class PublishWorkflow
             childOptions
         );
 
-        return new WaasResult<SharedWebspaceData>
-        {
-            ValidationErrors = [],
-            DesiredState = desiredState
-        };
+        return waasContext;
     }
 }

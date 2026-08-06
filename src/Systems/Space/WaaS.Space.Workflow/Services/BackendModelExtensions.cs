@@ -1,4 +1,4 @@
-namespace WaaS.Space.Worker;
+namespace WaaS.Space.Workflow;
 
 public static class BackendModelExtensions
 {

@@ -1,4 +1,4 @@
-﻿namespace WaaS.Workflow;
+﻿namespace WaaS.Space.Classic.Workflow;
 
 using Temporalio.Workflows;
 

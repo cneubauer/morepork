@@ -17,5 +17,5 @@ public interface ITenantStore
     /// </summary>
     /// <param name="tenantId">The unique ID of the tenant.</param>
     /// <returns>The tenant.</returns>
-    Task<Tenant?> Get(short tenantId);
+    Task<Tenant?> Read(short tenantId);
 }

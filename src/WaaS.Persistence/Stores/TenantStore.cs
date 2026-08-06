@@ -18,7 +18,7 @@ public class TenantStore(string connectionString) : ITenantStore
         });
     }
 
-    public async Task<Tenant?> Get(short tenantId)
+    public async Task<Tenant?> Read(short tenantId)
     {
         var sql = """
             SELECT id, name, profile
