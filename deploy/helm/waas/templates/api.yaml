@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    app.kubernetes.io/name: waas-api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: waas-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: waas-api
+    spec:
+      initContainers:
+        {{- include "waas.waitForTemporal" . | nindent 8 }}
+      containers:
+        - name: api
+          image: "{{ .Values.image.registry }}/waas-api:{{ include "waas.imageTag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: Temporal__TargetHost
+              value: {{ include "waas.temporalAddress" . }}
+          # AddKeyPerFile("/run/secrets") in Program.cs reads each file as a config
+          # key, so no env wiring is needed for the connection string here.
+          volumeMounts:
+            - name: secrets
+              mountPath: /run/secrets
+              readOnly: true
+          # Depends on AddHealthChecks()/MapHealthChecks(), which Program.cs does
+          # not have yet. Until it does, the pod will never report ready.
+          livenessProbe:
+            httpGet: { path: /health/live, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health/ready, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources: {{- toYaml .Values.api.resources | nindent 12 }}
+          securityContext: {{- include "waas.securityContext" . | nindent 12 }}
+      volumes:
+        - name: secrets
+          secret:
+            secretName: {{ .Values.secretName }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-api
+spec:
+  selector:
+    app.kubernetes.io/name: waas-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+{{- if .Values.api.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-api
+spec:
+  ingressClassName: {{ .Values.api.ingress.className }}
+  rules:
+    - host: {{ .Values.api.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-api
+                port:
+                  name: http
+{{- end }}

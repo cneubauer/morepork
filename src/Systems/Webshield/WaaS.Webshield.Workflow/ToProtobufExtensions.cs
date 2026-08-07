@@ -1,6 +1,4 @@
 using System.Text;
-using WaaS.Webshield.DesiredState;
-using WaaS.Webshield.ProtoBuf;
 
 namespace WaaS.Webshield.Workflow;
 
@@ -14,7 +12,7 @@ public static class ToProtobufExtensions
         bool isTombstone,
         string tenantName,
         string? referenceId = null,
-        DesiredState.WebshieldType? webshieldTypeFilter = null,
+        WebshieldType? webshieldTypeFilter = null,
         IReadOnlyDictionary<string, (string waId, string encryptedWaToken)>? resolvedAnalytics = null)
     {
         var header = new StateHeader

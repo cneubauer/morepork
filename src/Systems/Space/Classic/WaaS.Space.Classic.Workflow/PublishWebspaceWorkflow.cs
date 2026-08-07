@@ -28,7 +28,7 @@ public class PublishWebspaceWorkflow(ulong stackInstanceId, ulong systemInstance
         _pending.Add(transactionId);
 
         var waasContext = await Workflow.ExecuteActivityAsync(
-            (WaasActivities<SharedWebspaceData, WebspaceMiddleware.Webspace> act) => act.ReadWaasContext(transactionId, stackInstanceId, systemInstanceId),
+            (WaasActivities<SharedWebspaceData> act) => act.ReadWaasContext(transactionId, stackInstanceId, systemInstanceId),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
         );
 
@@ -47,7 +47,7 @@ public class PublishWebspaceWorkflow(ulong stackInstanceId, ulong systemInstance
         _pending.Remove(transactionId);
 
         await Workflow.ExecuteActivityAsync(
-            (WaasActivities<SharedWebspaceData, WebspaceMiddleware.Webspace> act) => act.SendNotification(transactionId),
+            (WaasActivities<SharedWebspaceData> act) => act.SendNotification(transactionId),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
         );
     }

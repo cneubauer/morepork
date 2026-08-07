@@ -17,8 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\WaaS.Space.Classic.Workflow\WaaS.Space.Classic.Workflow.csproj" />
-    <ProjectReference Include="..\..\WaaS.Space.Workflow\WaaS.Space.Workflow.csproj" />
+    <ProjectReference Include="..\WaaS.Webshield.Workflow\WaaS.Webshield.Workflow.csproj" />
   </ItemGroup>
 
 </Project>

@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: developer
-      POSTGRES_PASSWORD: dev
-      POSTGRES_DB: morepork
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -23,8 +23,8 @@ services:
     environment:
       DB: postgres12
       DB_PORT: 5432
-      POSTGRES_USER: developer
-      POSTGRES_PWD: dev
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD}
       POSTGRES_SEEDS: postgres
       DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development.yaml
     ports:
@@ -49,6 +49,21 @@ services:
     ports:
       - "8080:8080"
 
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
   webspace-middleware-mock:
     build:
       context: ./mocks/webspace-middleware
@@ -64,7 +79,7 @@ services:
       context: .
       dockerfile: src/Systems/Space/Classic/WaaS.Space.Classic.Worker/Dockerfile
     environment:
-      ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=morepork;Username=developer;Password=dev"
+      ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Temporal__TargetHost: "temporal:7233"
       WebspaceMiddleware__BaseUrl: "http://webspace-middleware-mock:8081/"
     depends_on:
@@ -76,12 +91,29 @@ services:
         condition: service_healthy
     restart: on-failure
 
+  webshield-worker:
+    build:
+      context: .
+      dockerfile: src/Systems/Webshield/WaaS.Webshield.Worker/Dockerfile
+    environment:
+      ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__RabbitMq: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/"
+      Temporal__TargetHost: "temporal:7233"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
   waas-api:
     build:
       context: .
       dockerfile: src/WaaS.WebApi/Dockerfile
     environment:
-      ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=morepork;Username=developer;Password=dev"
+      ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Temporal__TargetHost: "temporal:7233"
     ports:
       - "5000:8080"

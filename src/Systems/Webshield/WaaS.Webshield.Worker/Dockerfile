@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
 # Build context is the repository root — this project references sibling projects
 # and the root Directory.Packages.props, so a narrower context cannot restore.
-#   docker build -f src/Systems/Space/Classic/WaaS.Space.Classic.Worker/Dockerfile .
+#   docker build -f src/Systems/Webshield/WaaS.Webshield.Worker/Dockerfile .
 
 ARG DOTNET_VERSION=10.0
-ARG PROJECT=src/Systems/Space/Classic/WaaS.Space.Classic.Worker/WaaS.Space.Classic.Worker.csproj
+ARG PROJECT=src/Systems/Webshield/WaaS.Webshield.Worker/WaaS.Webshield.Worker.csproj
 
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}-noble AS build
 ARG BUILD_CONFIGURATION=Release

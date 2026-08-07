@@ -28,6 +28,7 @@
     <Project Path="src/Systems/Webshield/WaaS.Webshield.ProtoBuf/WaaS.Webshield.ProtoBuf.csproj" />
     <Project Path="src/Systems/Webshield/WaaS.Webshield.ViewModel/WaaS.Webshield.ViewModel.csproj" />
     <Project Path="src/Systems/Webshield/WaaS.Webshield.Workflow/WaaS.Webshield.Workflow.csproj" />
+    <Project Path="src/Systems/Webshield/WaaS.Webshield.Worker/WaaS.Webshield.Worker.csproj" />
   </Folder>
   <Project Path="src/WaaS.WebApi/WaaS.WebApi.csproj" />
 </Solution>

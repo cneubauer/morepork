@@ -1,0 +1,63 @@
+# Every knob a caller may turn has to be declared here up front. That is the
+# central trade-off against Kustomize: this file is a real API surface you design
+# and maintain, and anything not exposed cannot be changed without editing
+# templates.
+
+temporal:
+  enabled: false
+  # Address used when the subchart is disabled and Temporal runs elsewhere.
+  address: temporal-frontend:7233
+
+rabbitmq:
+  enabled: false
+
+image:
+  registry: registry.example.com/waas
+  pullPolicy: IfNotPresent
+  # tag defaults to .Chart.AppVersion when empty
+
+# The secret holding ConnectionStrings__WaaS etc. Created out-of-band by
+# External Secrets or Sealed Secrets — deliberately not templated, so plaintext
+# credentials never live in a values file.
+secretName: waas-secrets
+
+api:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 192Mi
+    limits:
+      memory: 512Mi
+  ingress:
+    enabled: false
+    className: nginx
+    host: waas.example.com
+
+workers:
+  # Adding a worker is a values entry, not a new file. This is where Helm pulls
+  # ahead: the workers differ only in image and a little config, so one template
+  # plus a loop beats N near-identical manifests. Secrets need no entry at all —
+  # every worker reads them from the mounted volume via AddKeyPerFile.
+  spaceClassic:
+    enabled: true
+    image: space-classic-worker
+    replicas: 2
+    env:
+      WebspaceMiddleware__BaseUrl: http://webspace-middleware:8081/
+  webshield:
+    # Blocked on WaaS.Webshield.Workflow: WebshieldActualStateListener.cs
+    # references an IRabbitMqConsumer that does not exist yet, so the project
+    # does not compile. Flip to true once that lands.
+    enabled: false
+    image: webshield-worker
+    replicas: 2
+    env:
+      RabbitMq__Exchange: Webshield
+
+resourcesDefault:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    memory: 512Mi

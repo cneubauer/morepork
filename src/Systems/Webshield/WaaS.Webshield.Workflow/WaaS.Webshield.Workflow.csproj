@@ -1,14 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\WaaS.Webshield.ProtoBuf\WaaS.Webshield.ProtoBuf.csproj" />
-    <ProjectReference Include="..\WaaS.Webshield.DesiredState\WaaS.Webshield.DesiredState.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\WaaS.Webshield.ProtoBuf\WaaS.Webshield.ProtoBuf.csproj" />
+    <ProjectReference Include="..\WaaS.Webshield.DesiredState\WaaS.Webshield.DesiredState.csproj" />
+    <ProjectReference Include="..\..\..\WaaS.Persistence\WaaS.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\Common\WaaS.Common.Workflow\WaaS.Common.Workflow.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Temporalio" />
+    <PackageReference Include="RabbitMQ.Client" />
+  </ItemGroup>
 </Project>

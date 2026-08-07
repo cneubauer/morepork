@@ -1,0 +1,68 @@
+{{/*
+One template, every worker. The workers are structurally identical — Temporal
+host, secrets from a mounted volume, and a little per-worker config — so the loop
+removes the copy-paste that the Kustomize base needs one file per worker for.
+This is the strongest argument for Helm in this repo, and it grows with each
+worker added.
+*/}}
+{{- range $name, $worker := .Values.workers }}
+{{- if $worker.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $.Release.Name }}-{{ $worker.image }}
+  labels:
+    app.kubernetes.io/name: {{ $worker.image }}
+spec:
+  replicas: {{ $worker.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $worker.image }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $worker.image }}
+    spec:
+      initContainers:
+        {{- include "waas.waitForTemporal" $ | nindent 8 }}
+      containers:
+        - name: worker
+          image: "{{ $.Values.image.registry }}/{{ $worker.image }}:{{ include "waas.imageTag" $ }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          # The workers moved to Microsoft.NET.Sdk.Web purely so this port exists.
+          # It serves health endpoints only and is deliberately not fronted by a
+          # Service — probes reach it on the pod IP.
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: Temporal__TargetHost
+              value: {{ include "waas.temporalAddress" $ }}
+            {{- range $key, $value := $worker.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          # Every worker calls AddKeyPerFile("/run/secrets"), so all secrets —
+          # ConnectionStrings__WaaS, ConnectionStrings__RabbitMq — arrive as files.
+          # No per-worker secret wiring in this template any more.
+          volumeMounts:
+            - name: secrets
+              mountPath: /run/secrets
+              readOnly: true
+          livenessProbe:
+            httpGet: { path: /health/live, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health/ready, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources: {{- toYaml ($worker.resources | default $.Values.resourcesDefault) | nindent 12 }}
+          securityContext: {{- include "waas.securityContext" $ | nindent 12 }}
+      volumes:
+        - name: secrets
+          secret:
+            secretName: {{ $.Values.secretName }}
+{{- end }}
+{{- end }}

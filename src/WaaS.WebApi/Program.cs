@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,7 +32,16 @@ builder.Services.AddTemporalClient(options =>
 
 builder.Services.AddHostedService<WorkflowExecutor>();
 
+builder.Services.AddHealthChecks()
+    .AddWaasDatabaseCheck(waasConnectionString);
+
 var app = builder.Build();
+
+// Liveness excludes every tagged check, so it answers as long as the process is
+// running. Readiness runs the "ready"-tagged checks, so a database outage takes
+// the pod out of rotation without triggering a restart loop.
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
 app.MapOpenApi();
 

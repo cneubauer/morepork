@@ -2,14 +2,13 @@ namespace WaaS.Common.Workflow;
 
 using Temporalio.Activities;
 
-public class WaasActivities<TDesiredState, TBackendModel>(
+public class WaasActivities<TDesiredState>(
     IStackInstanceStore stackInstanceStore,
     ITenantStore tenantStore,
     IDesiredStateStore<TDesiredState> desiredStateStore,
-    ILogger<WaasActivities<TDesiredState, TBackendModel>> logger
+    ILogger<WaasActivities<TDesiredState>> logger
 )
 where TDesiredState : class, IDesiredStateData, new()
-where TBackendModel : class
 {
     [Activity]
     public async Task<WaasContext<TDesiredState>> ReadWaasContext(string transactionId, ulong stackInstanceId, ulong systemInstanceId)

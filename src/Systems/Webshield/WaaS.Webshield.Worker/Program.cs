@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Temporalio.Extensions.Hosting;
-using WaaS.Space.Classic.Workflow;
+using WaaS.Webshield.Workflow;
 using WaaS.Common.Workflow;
-using WebspaceMiddleware;
-using WaaS.Space.Workflow;
+using WaaS.Webshield.DesiredState;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,25 +13,34 @@ builder.Configuration.AddKeyPerFile("/run/secrets", optional: true);
 var waasConnectionString = builder.Configuration.GetConnectionString("WaaS")
     ?? throw new InvalidOperationException("Missing connection string for WaaS");
 
+var rabbitMqConnectionString = builder.Configuration.GetConnectionString("RabbitMq")
+    ?? throw new InvalidOperationException("Missing connection string for RabbitMq");
+
 builder.Services.AddScoped<IStackInstanceStore>(
     serviceProvider => new StackInstanceStore(waasConnectionString)
 );
-builder.Services.AddDesiredStateStore<SharedWebspaceData>(waasConnectionString);
+builder.Services.AddDesiredStateStore<WebshieldData>(waasConnectionString);
 builder.Services.AddTenantStore(waasConnectionString);
 
-builder.Services.AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Webspace>, WebspaceMiddlewareService>(
-    client => client.BaseAddress =
-        new Uri(builder.Configuration["WebspaceMiddleware:BaseUrl"]!));
+builder.Services.AddScoped<ISslProxyRepository>(
+    serviceProvider => new SslProxyRepository(waasConnectionString)
+);
 
+builder.Services.AddSingleton<IRabbitMqPublisher>(
+    serviceProvider => new RabbitMqPublisher(
+        rabbitMqConnectionString,
+        builder.Configuration["RabbitMq:Exchange"]
+            ?? throw new InvalidOperationException("Missing RabbitMq:Exchange"))
+);
 
 builder.Services
     .AddHostedTemporalWorker(
         builder.Configuration["Temporal:TargetHost"]!,
         "default",
         WorkflowDefinitions.DefaultTaskQueue)
-    .AddScopedActivities<WaasActivities<SharedWebspaceData>>()
-    .AddScopedActivities<SharedWebspaceActivities>()
-    .AddWorkflow<PublishWebspaceWorkflow>();
+    .AddScopedActivities<WaasActivities<WebshieldData>>()
+    .AddScopedActivities<WebshieldActivities>()
+    .AddWorkflow<PublishWebshieldWorkflow>();
 
 builder.Services.AddHealthChecks()
     .AddWaasDatabaseCheck(waasConnectionString);

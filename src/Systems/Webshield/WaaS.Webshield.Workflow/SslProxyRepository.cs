@@ -1,16 +1,16 @@
 using Dapper;
 using Npgsql;
 
-namespace WaaS.Webshield.Management;
+namespace WaaS.Webshield.Workflow;
 
 public interface ISslProxyRepository
 {
-    Task<IReadOnlyList<string>> GetHostnamesByZone(short zone, CancellationToken cancellationToken);
+    Task<IReadOnlyList<string>> GetWebshieldNodes(short zone);
 }
 
 public sealed class SslProxyRepository(string connectionString) : ISslProxyRepository
 {
-    public async Task<IReadOnlyList<string>> GetHostnamesByZone(short zone, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<string>> GetWebshieldNodes(short zone)
     {
         await using var connection = new NpgsqlConnection(connectionString);
 
