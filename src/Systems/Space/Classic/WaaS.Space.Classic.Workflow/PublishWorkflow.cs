@@ -15,17 +15,17 @@ public class PublishWorkflow(ulong stackInstanceId, ulong systemInstanceId)
     }
 
     [WorkflowUpdate]
-    public async Task<WaasContext<SharedWebspaceData>> Publish(string transactionId)
+    public async Task<WaasContext<SharedWebspaceData>> PublishDesiredState(string transactionId)
     {
         _pending.Add(transactionId);
 
         var waasContext = await Workflow.ExecuteActivityAsync(
-            (SharedWebspaceActivities act) => act.Read(transactionId, stackInstanceId, systemInstanceId),
+            (SharedWebspaceActivities act) => act.ReadWaasContext(transactionId, stackInstanceId, systemInstanceId),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
         );
 
         waasContext = await Workflow.ExecuteActivityAsync(
-            (SharedWebspaceActivities act) => act.Publish(waasContext),
+            (SharedWebspaceActivities act) => act.SendToBackend(waasContext),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(15) }
         );
 

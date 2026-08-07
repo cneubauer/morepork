@@ -74,7 +74,7 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
                 });
 
             await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-                (PublishWorkflow workflow) => workflow.Publish(entry.TransactionId),
+                (PublishWorkflow workflow) => workflow.PublishDesiredState(entry.TransactionId),
                 new WorkflowUpdateWithStartOptions(startOperation)
             );
         }

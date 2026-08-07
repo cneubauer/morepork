@@ -14,7 +14,7 @@ public class SharedWebspaceActivities(
 )
 {
     [Activity]
-    public async Task<WaasContext<SharedWebspaceData>> Read(string transactionId, ulong stackInstanceId, ulong systemInstanceId)
+    public async Task<WaasContext<SharedWebspaceData>> ReadWaasContext(string transactionId, ulong stackInstanceId, ulong systemInstanceId)
     {
         var stackInstance = await stackInstanceStore.Read(stackInstanceId)
             ?? throw new Exception($"Stack instance not found for stackInstanceId: {stackInstanceId}");
@@ -36,7 +36,7 @@ public class SharedWebspaceActivities(
     }
 
     [Activity]
-    public async Task<WaasContext<SharedWebspaceData>> Publish(WaasContext<SharedWebspaceData> waasContext)
+    public async Task<WaasContext<SharedWebspaceData>> SendToBackend(WaasContext<SharedWebspaceData> waasContext)
     {
         var desiredState = await webspaceMiddlewareService.Publish(
             waasContext.Tenant.Name,

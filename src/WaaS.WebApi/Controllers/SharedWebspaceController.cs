@@ -88,7 +88,7 @@ public class SharedWebspaceController(
             });
 
         var result = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-            (PublishWorkflow workflow) => workflow.Publish(transactionId),
+            (PublishWorkflow workflow) => workflow.PublishDesiredState(transactionId),
             new WorkflowUpdateWithStartOptions(startOperation)
             {
                 Rpc = new RpcOptions { CancellationToken = HttpContext.RequestAborted },
