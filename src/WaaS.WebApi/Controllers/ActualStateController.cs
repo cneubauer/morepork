@@ -20,10 +20,10 @@ public class ActualStateController(ITemporalClient temporalClient) : ControllerB
         [FromRoute] string transactionId
     )
     {
-        var workflowHandle = temporalClient.GetWorkflowHandle<PublishWorkflow>(resourceId);
+        var workflowHandle = temporalClient.GetWorkflowHandle<PublishWebspaceWorkflow>(resourceId);
 
         await workflowHandle.SignalAsync(
-            workflow => workflow.ReceiveCompletionSignalAsync(transactionId)
+            workflow => workflow.ReceiveBackendNotification(transactionId)
         );
 
         return Ok();

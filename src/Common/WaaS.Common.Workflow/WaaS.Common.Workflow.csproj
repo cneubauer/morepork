@@ -7,6 +7,10 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <PackageReference Include="Temporalio" />
+  </ItemGroup>
+  
+  <ItemGroup>
     <ProjectReference Include="..\..\WaaS.Persistence\WaaS.Persistence.csproj" />
   </ItemGroup>
 

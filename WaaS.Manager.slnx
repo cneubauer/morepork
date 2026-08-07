@@ -25,7 +25,9 @@
   </Folder>
   <Folder Name="/src/Systems/Webshield/">
     <Project Path="src/Systems/Webshield/WaaS.Webshield.DesiredState/WaaS.Webshield.DesiredState.csproj" />
+    <Project Path="src/Systems/Webshield/WaaS.Webshield.ProtoBuf/WaaS.Webshield.ProtoBuf.csproj" />
     <Project Path="src/Systems/Webshield/WaaS.Webshield.ViewModel/WaaS.Webshield.ViewModel.csproj" />
+    <Project Path="src/Systems/Webshield/WaaS.Webshield.Workflow/WaaS.Webshield.Workflow.csproj" />
   </Folder>
   <Project Path="src/WaaS.WebApi/WebApi.csproj" />
 </Solution>

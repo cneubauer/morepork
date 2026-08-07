@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../../Common/WaaS.Common.DesiredState/WaaS.Common.DesiredState.csproj" />
+    <ProjectReference Include="..\..\..\WaaS.Persistence\WaaS.Persistence.csproj" />
   </ItemGroup>
 
 </Project>

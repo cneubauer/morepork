@@ -1,0 +1,22 @@
+syntax = "proto2";
+option java_package = "com.oneandone.hosting.infrastructure.stackableapps.protobuf";
+option java_outer_classname = "EncryptedContainerMessages";
+
+message EncryptedContainer {
+    enum DataCipherType {
+        AES_256_CBC = 1;  // requires iv, hmacFunction != NONE and hmac
+        EAX_OAEP_256 = 2; // requires iv, hmacFunction == NONE
+    }
+    enum HmacFunctionType {
+        NONE = 1;
+        SHA1 = 2;
+        SHA256 = 3;
+    }
+
+    required DataCipherType dataCipher     = 1;
+    required HmacFunctionType hmacFunction = 2;
+    optional bytes iv                      = 3; // for ciphers that require an Initial Vector
+    optional bytes hmac                    = 4; // in case cipher does not provide validity check on its own
+    optional bytes key                     = 5; // to hold the encrypted symmetric key in case we ever want to do asymmetric encryption
+    required bytes data                    = 6; // encrypted private key
+}

@@ -65,7 +65,7 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
             // Must be update-with-start, not a plain start: a reconciler created with an empty
             // pending set would publish nothing and idle out.
             var startOperation = WithStartWorkflowOperation.Create(
-                (PublishWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId),
+                (PublishWebspaceWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId),
                 new WorkflowOptions
                 {
                     Id = resourceId,
@@ -74,7 +74,7 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
                 });
 
             await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-                (PublishWorkflow workflow) => workflow.PublishDesiredState(entry.TransactionId),
+                (PublishWebspaceWorkflow workflow) => workflow.PublishDesiredState(entry.TransactionId),
                 new WorkflowUpdateWithStartOptions(startOperation)
             );
         }

@@ -1,0 +1,149 @@
+syntax = "proto2";
+
+import "state_header.proto";
+import "encrypted_container.proto";
+
+option java_package = "com.oneandone.hosting.infrastructure.stackableapps.protobuf";
+option java_outer_classname = "ProxyMessages";
+
+message DesiredStateProxyList {
+    repeated DesiredStateProxy items = 1;
+}
+
+message DesiredStateProxy {
+    required StateHeader header          = 1;
+
+    //payload
+    repeated Mapping mappings            = 2;
+    repeated SslCertificate certificates = 3;
+}
+
+message DesiredStateProxyConfigList {
+    repeated DesiredStateProxyConfig items = 1;
+}
+
+message DesiredStateProxyConfig {
+    required StateHeader header       = 1;
+    repeated bytes intermediates      = 2;
+    repeated SslCertificate wildcards = 3;
+}
+
+// Used by mappingstore internally only
+message MappingstoreExtraData {
+    optional string tenantName = 1;  // Helper to persist 'tenantName' from desired state header
+}
+
+message Mapping {
+    enum ModeType {
+        PROXY           = 1;
+        PROXY_FORCE_SSL = 2;
+        REDIRECT        = 3;
+    }
+    required string hostname               = 1;
+    required string destination            = 2;
+    optional ModeType mode                 = 3; // Deprecated: Nginx will never handle redirects. For force-SSL see new flag below
+    required uint64 stackInstanceId        = 4;
+    optional uint32 sslCertificateId       = 5; // MUST be used when sending mappings over the wire
+    optional SslCertificate sslCertificate = 6; // only used by Mappingstore to join mapping and certificate into one result
+    optional bool forceSsl                 = 7; // only allowed 'true' if sslCertificateId is also set
+    repeated UriConfig uriConfigs          = 8;
+    optional MappingstoreExtraData mappingstoreExtraData = 9;  // Used by mappingstore internally only
+    optional WebshieldAnalytics webAnalytics             = 10; // mutual exclusive to UriConfig.webAnalytics
+    optional string plainWaToken           = 11; // save decrypted WaToken if exists
+}
+
+message SslCertificate {
+    required uint32 certificateId                   = 1; // unique per stackInstanceId, NOT globally unique
+    required bytes certificate                      = 2; // main certificate
+    optional bytes privateKey                       = 3; // only to be used by persistence of Mappingstore
+    repeated bytes certificateChain                 = 4; // used by Nginx to cache auto-generated chain if empty. Can contain pre-generated chain in rare cases where it might make sense.
+    optional EncryptedContainer encryptedPrivateKey = 5; // MUST be used when sending mappings over the wire
+    optional bytes ocspStapling                     = 6; // optional ocsp stapling data for the given main certificate
+
+    // Note: IDs over 1000 are reserved for internal use by Nginx
+
+    // Used by nginx as an internal marker to see if a cached mapping has
+    // already been used in an SSL context or not. Checking for non-empty
+    // certificate chain is insufficent. In case there is no matching
+    // intermediate, nginx would try to find one over-and-over again.
+    optional bool certificate_chain_generated = 1000;
+}
+
+message UriMatch {
+    enum UriMatchType {
+        PREFIX = 1;
+    }
+
+    enum UriProtocol {
+        ALL   = 1;
+        HTTP  = 2;
+        HTTPS = 3;
+    }
+
+    required UriMatchType type    = 1;
+    required UriProtocol protocol = 2;
+    required string prefix        = 3;
+}
+
+message Geofilter {
+    enum FilterType {
+        ALLOW = 1;
+        DENY  = 2;
+    }
+
+    repeated string countries = 1;
+    required FilterType type  = 2;
+}
+
+message WafConfig {
+    enum WafRuleset {
+        OFF   = 1;
+        OWASP = 2;
+    }
+
+    optional WafRuleset ruleset  = 1;
+    optional Geofilter geofilter = 2;
+    optional uint32 ratelimit    = 3;
+}
+
+message CacheConfig {
+    enum CachePolicy {
+        OFF         = 1;
+        BASIC       = 2;
+        FORCE_CACHE = 3;
+    }
+
+    required CachePolicy policy = 1;
+    optional string salt        = 2;
+}
+
+message Destination {
+    enum DestinationType {
+        PROXY    = 1;
+        REDIRECT = 2;
+    }
+
+    enum SniMode {
+        PASS_THROUGH = 1;
+        TARGET       = 2;
+    }
+    
+    required DestinationType type = 1;
+    required string target        = 2; // Will replace the top level `destination` field
+    required SniMode sniMode      = 3;
+}
+
+message UriConfig {
+    required UriMatch match               = 1;
+    required Destination destination      = 2;
+    optional WafConfig waf                = 3;
+    optional CacheConfig cache            = 4;
+    optional WebshieldAnalytics webAnalytics    = 5;
+}
+
+message WebshieldAnalytics {
+    optional string waId = 1;
+    optional string securePasswordToken = 2;
+    optional string waProfileId = 3;
+    optional string encryptedWaToken = 4;
+}

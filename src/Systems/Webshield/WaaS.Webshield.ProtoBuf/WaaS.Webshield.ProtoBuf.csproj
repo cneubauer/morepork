@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="protobuf-net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProtoFiles Include="Proto\*.proto" />
+  </ItemGroup>
+
+  <!-- Regenerate C# from .proto files. Skip in CI via /p:SkipProtogen=true -->
+  <Target Name="GenerateProtobuf" BeforeTargets="BeforeBuild"
+          Inputs="@(ProtoFiles)" Outputs="Generated\%(ProtoFiles.Filename).cs"
+          Condition="'$(SkipProtogen)' != 'true'">
+    <Exec Command="dotnet tool restore" />
+    <Exec Command="dotnet protogen --csharp_out=Generated -IProto +names=original +nullablevaluetype=yes +repeatedaslist=yes --package=WaaS.Webshield.ProtoBuf Proto\*.proto" />
+  </Target>
+</Project>

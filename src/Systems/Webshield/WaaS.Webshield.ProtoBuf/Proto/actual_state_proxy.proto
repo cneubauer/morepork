@@ -1,0 +1,14 @@
+syntax = "proto2";
+
+import "state_header.proto";
+import "error.proto";
+
+option java_package = "com.oneandone.hosting.infrastructure.stackableapps.protobuf";
+option java_outer_classname = "ActualStateProxyMessages";
+
+message ActualStateProxy {
+    required StateHeader header = 1;
+    required string nodeFqdn    = 2;
+
+    optional Error error        = 3;
+}

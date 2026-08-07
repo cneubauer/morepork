@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+option java_package = "com.oneandone.hosting.infrastructure.stackableapps.protobuf";
+option java_outer_classname = "ErrorMessages";
+
+message Error {
+    required uint32 code   = 1;
+    required string reason = 2;
+}

@@ -4,14 +4,22 @@ using Temporalio.Workflows;
 
 [Workflow]
 [method: WorkflowInit]
-public class PublishWorkflow(ulong stackInstanceId, ulong systemInstanceId)
+public class PublishWebspaceWorkflow(ulong stackInstanceId, ulong systemInstanceId)
 {
     private readonly HashSet<string> _pending = [];
+    private readonly HashSet<string> _acknowledged = [];
+
+    [WorkflowQuery]
+    public IReadOnlyCollection<string> Pending => [.. _pending];
+
+    [WorkflowQuery]
+    public IReadOnlyCollection<string> Acknowledged => [.. _acknowledged];
 
     [WorkflowRun]
-    public async Task RunAsync(ulong stackInstanceId, ulong systemInstanceId)
+    public async Task<IReadOnlyCollection<string>> RunAsync(ulong stackInstanceId, ulong systemInstanceId)
     {
         await Workflow.WaitConditionAsync(() => _pending.Count == 0 && Workflow.AllHandlersFinished);
+        return [.. _acknowledged];
     }
 
     [WorkflowUpdate]
@@ -20,7 +28,7 @@ public class PublishWorkflow(ulong stackInstanceId, ulong systemInstanceId)
         _pending.Add(transactionId);
 
         var waasContext = await Workflow.ExecuteActivityAsync(
-            (SharedWebspaceActivities act) => act.ReadWaasContext(transactionId, stackInstanceId, systemInstanceId),
+            (WaasActivities<SharedWebspaceData, WebspaceMiddleware.Webspace> act) => act.ReadWaasContext(transactionId, stackInstanceId, systemInstanceId),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
         );
 
@@ -33,12 +41,13 @@ public class PublishWorkflow(ulong stackInstanceId, ulong systemInstanceId)
     }
 
     [WorkflowSignal]
-    public async Task ReceiveCompletionSignalAsync(string transactionId)
+    public async Task ReceiveBackendNotification(string transactionId)
     {
+        _acknowledged.Add(transactionId);
         _pending.Remove(transactionId);
 
         await Workflow.ExecuteActivityAsync(
-            (SharedWebspaceActivities act) => act.SendNotification(transactionId),
+            (WaasActivities<SharedWebspaceData, WebspaceMiddleware.Webspace> act) => act.SendNotification(transactionId),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
         );
     }

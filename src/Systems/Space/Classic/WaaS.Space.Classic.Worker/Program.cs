@@ -26,6 +26,6 @@ builder.Services
         "default",
         WorkflowDefinitions.DefaultTaskQueue)
     .AddScopedActivities<SharedWebspaceActivities>()
-    .AddWorkflow<PublishWorkflow>();
+    .AddWorkflow<PublishWebspaceWorkflow>();
 
 await builder.Build().RunAsync();

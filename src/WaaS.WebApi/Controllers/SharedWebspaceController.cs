@@ -79,7 +79,7 @@ public class SharedWebspaceController(
         var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
         var startOperation = WithStartWorkflowOperation.Create(
-            (PublishWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId),
+            (PublishWebspaceWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId),
             new WorkflowOptions
             {
                 Id = resourceId,
@@ -88,7 +88,7 @@ public class SharedWebspaceController(
             });
 
         var result = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-            (PublishWorkflow workflow) => workflow.PublishDesiredState(transactionId),
+            (PublishWebspaceWorkflow workflow) => workflow.PublishDesiredState(transactionId),
             new WorkflowUpdateWithStartOptions(startOperation)
             {
                 Rpc = new RpcOptions { CancellationToken = HttpContext.RequestAborted },
