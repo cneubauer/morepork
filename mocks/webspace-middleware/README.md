@@ -19,16 +19,18 @@ Everything else answers `404`. `GET /_mock/webspaces` dumps current state for de
 node mocks/webspace-middleware/server.js     # PORT (default 8081), HOST (default 0.0.0.0)
 ```
 
-Or via compose, which exposes it on `http://localhost:8081`:
+Or via compose, which builds the image and exposes it on `http://localhost:8081`:
 
 ```bash
 docker compose up webspace-middleware-mock
 ```
 
-Point the worker at it:
+The worker already points at it — `WebspaceMiddleware:BaseUrl` in its `appsettings.json` is
+`http://webspace-middleware-mock:8081/`, and compose waits for the mock's healthcheck before
+starting the worker. Override for a host-run worker:
 
-```json
-{ "WebspaceMiddleware": { "BaseUrl": "http://webspace-middleware-mock:8081/" } }
+```bash
+WebspaceMiddleware__BaseUrl=http://localhost:8081/ dotnet run
 ```
 
 The trailing slash matters — `HttpClient.BaseAddress` drops the last path segment without it.

@@ -124,17 +124,26 @@ public class SharedWebspaceController(
         [FromRoute] ulong systemInstanceId
     )
     {
+        #region Validate
+
         var tenantEntity = await tenantStore.Get(tenant);
 
         if (tenantEntity is null)
             return NotFound();
+
+        var stackInstance = await stackInstanceStore.Read(stackInstanceId);
+
+        if (stackInstance is null || stackInstance.TenantId != tenantEntity.Id)
+            return NotFound();
+
+        #endregion
 
         var desiredState = await desiredStateStore.Read(tenantEntity.Id, stackInstanceId, systemInstanceId);
 
         if (desiredState is null)
             return NotFound();
 
-        var webspace = desiredState.Data.Space.ToViewModel(desiredState.SystemInstanceId!.Value);
+        var webspace = desiredState.Data.Webspace.ToViewModel(desiredState.SystemInstanceId!.Value);
 
         return Ok(webspace);
     }

@@ -189,3 +189,13 @@ const server = http.createServer(async (request, response) => {
 server.listen(port, host, () => {
     console.log(`webspace-middleware mock listening on http://${host}:${port}`);
 });
+
+// Without this the process ignores SIGTERM and every `docker compose down`
+// waits out the 10s grace period before the container is killed.
+for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.on(signal, () => {
+        console.log(`${signal} received, shutting down`);
+        server.close(() => process.exit(0));
+        server.closeIdleConnections();
+    });
+}

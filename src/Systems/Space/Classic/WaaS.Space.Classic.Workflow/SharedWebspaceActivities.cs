@@ -29,9 +29,9 @@ public class SharedWebspaceActivities(
         {
             TransactionId = transactionId,
             ValidationErrors = [],
-            StackInstance = stackInstance,
+            StackInstance = (StackInstance)stackInstance,
             Tenant = tenant,
-            DesiredState = desiredState,
+            DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
         };
     }
 
@@ -49,7 +49,7 @@ public class SharedWebspaceActivities(
 
         return waasContext with
         {
-            DesiredState = desiredState,
+            DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
         };
     }
 

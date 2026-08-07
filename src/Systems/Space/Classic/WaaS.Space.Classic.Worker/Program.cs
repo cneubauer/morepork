@@ -12,13 +12,8 @@ var waasConnectionString = builder.Configuration.GetConnectionString("WaaS")
 builder.Services.AddScoped<IStackInstanceStore>(
     serviceProvider => new StackInstanceStore(waasConnectionString)
 );
-
 builder.Services.AddDesiredStateStore<SharedWebspaceData>(waasConnectionString);
-
-builder.Services.AddTenantStore(
-    builder.Configuration.GetConnectionString("TenantStore")
-    ?? throw new InvalidOperationException("Missing connection string for TenantStore")
-);
+builder.Services.AddTenantStore(waasConnectionString);
 
 builder.Services.AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Webspace>, WebspaceMiddlewareService>(
     client => client.BaseAddress =

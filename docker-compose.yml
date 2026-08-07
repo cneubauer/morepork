@@ -50,15 +50,16 @@ services:
       - "8080:8080"
 
   webspace-middleware-mock:
-    image: node:22-alpine
-    working_dir: /app
-    command: node server.js
-    environment:
-      PORT: 8081
+    build:
+      context: ./mocks/webspace-middleware
     ports:
       - "8081:8081"
-    volumes:
-      - ./mocks/webspace-middleware:/app:ro
+    # No shell in the image beyond BusyBox and no curl, so probe with node itself.
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:8081/_mock/webspaces', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   space-classic-worker:
     build:
@@ -70,7 +71,5 @@ services:
       temporal:
         condition: service_healthy
       webspace-middleware-mock:
-        condition: service_started
-    environment:
-      WebspaceMiddleware__BaseUrl: http://webspace-middleware-mock:8081/
+        condition: service_healthy
     restart: on-failure

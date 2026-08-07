@@ -8,7 +8,7 @@ public class StackInstanceStore(string connectionString) : IStackInstanceStore
     public async  Task<IEnumerable<IStackInstance>> List(short tenantId, int offset = 0, int limit = 1000)
     {
         var sql = @"
-            SELECT stack_instance_id AS Id,
+            SELECT id AS Id,
                    state_tenant AS TenantId,
                    state_zone AS Zone,
                    dependency_mode AS DependencyMode,
@@ -37,7 +37,7 @@ public class StackInstanceStore(string connectionString) : IStackInstanceStore
         var sql = @"
             INSERT INTO stack_instance (state_tenant, state_zone, dependency_mode, created, ext_reference, tags)
                 VALUES(@TenantId, @Zone, @DependencyMode, @Created, @ExternalReference, @Tags)
-            RETURNING stack_instance_id AS Id,
+            RETURNING id AS Id,
                       state_tenant AS TenantId,
                       state_zone AS Zone,
                       dependency_mode AS DependencyMode,
@@ -55,7 +55,7 @@ public class StackInstanceStore(string connectionString) : IStackInstanceStore
     public async Task<IStackInstance?> Read(ulong stackInstanceId)
     {
         var sql = @"
-            SELECT stack_instance_id AS Id,
+            SELECT id AS Id,
                    state_tenant AS TenantId,
                    state_zone AS Zone,
                    dependency_mode AS DependencyMode,
@@ -64,7 +64,7 @@ public class StackInstanceStore(string connectionString) : IStackInstanceStore
                    ext_reference AS ExternalReference,
                    tags AS Tags
             FROM stack_instance
-            WHERE stack_instance_id = @StackInstanceId
+            WHERE id = @StackInstanceId
         ";
 
         using var conn = new NpgsqlConnection(connectionString);
@@ -83,7 +83,7 @@ public class StackInstanceStore(string connectionString) : IStackInstanceStore
                 dependency_mode = @DependencyMode,
                 ext_reference = @ExternalReference,
                 tags = @Tags
-            WHERE stack_instance_id = @Id
+            WHERE id = @Id
         ";
 
         using var conn = new NpgsqlConnection(connectionString);
@@ -102,7 +102,7 @@ public class StackInstanceStore(string connectionString) : IStackInstanceStore
     {
         var sql = @"
             DELETE FROM stack_instance
-            WHERE stack_instance_id = @StackInstanceId
+            WHERE id = @StackInstanceId
         ";
 
         using var conn = new NpgsqlConnection(connectionString);
@@ -115,7 +115,7 @@ public class StackInstanceStore(string connectionString) : IStackInstanceStore
         var sql = @"
             UPDATE stack_instance
             SET tombstoned = TRUE
-            WHERE stack_instance_id = @StackInstanceId
+            WHERE id = @StackInstanceId
         ";
 
         using var conn = new NpgsqlConnection(connectionString);
