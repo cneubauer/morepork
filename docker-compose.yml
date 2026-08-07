@@ -49,6 +49,17 @@ services:
     ports:
       - "8080:8080"
 
+  webspace-middleware-mock:
+    image: node:22-alpine
+    working_dir: /app
+    command: node server.js
+    environment:
+      PORT: 8081
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./mocks/webspace-middleware:/app:ro
+
   space-classic-worker:
     build:
       context: .
@@ -58,4 +69,8 @@ services:
         condition: service_healthy
       temporal:
         condition: service_healthy
+      webspace-middleware-mock:
+        condition: service_started
+    environment:
+      WebspaceMiddleware__BaseUrl: http://webspace-middleware-mock:8081/
     restart: on-failure

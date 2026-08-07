@@ -1,6 +1,6 @@
 using WebspaceMiddleware;
 
-namespace WaaS.Space.Classic.Worker;
+namespace WaaS.Space.Classic.Workflow;
 
 public class WebspaceMiddlewareService(HttpClient httpClient)
     : SpaceMiddlewareService<SharedWebspaceData, Webspace>(httpClient)

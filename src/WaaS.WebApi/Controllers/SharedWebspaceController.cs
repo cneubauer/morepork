@@ -5,7 +5,12 @@ namespace WaaS.WebApi;
 
 [ApiController]
 [Route("api/{tenant}/stack-instances/{stackInstanceId}/stretchspaces")]
-public class SharedWebspaceController(ITemporalClient temporalClient, ITenantStore tenantStore, IDesiredStateStore<SharedWebspaceData> desiredStateStore) : ControllerBase
+public class SharedWebspaceController(
+    ITemporalClient temporalClient,
+    ITenantStore tenantStore,
+    IStackInstanceStore stackInstanceStore,
+    IDesiredStateStore<SharedWebspaceData> desiredStateStore
+) : ControllerBase
 {
     /// <summary>
     /// Update Shared Webspace
@@ -30,10 +35,19 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
     {
         transactionId ??= $"{Guid.NewGuid()}";
 
+        #region Validate
+
         var tenantEntity = await tenantStore.Get(tenant);
 
         if (tenantEntity is null)
             return NotFound();
+
+        var stackInstance = await stackInstanceStore.Read(stackInstanceId);
+
+        if (stackInstance is null || stackInstance.TenantId != tenantEntity.Id)
+            return NotFound();
+
+        #endregion
 
         #region Update Desired State
 

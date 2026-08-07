@@ -13,10 +13,19 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 
-builder.Services.AddDesiredStateStore<SharedWebspaceData>(
-    builder.Configuration.GetConnectionString("WaaS")!);
+var waasConnectionString = builder.Configuration.GetConnectionString("WaaS")
+    ?? throw new InvalidOperationException("Missing connection string for WaaS");
 
-builder.Services.AddTenantStore(builder.Configuration.GetConnectionString("TenantStore")!);
+builder.Services.AddScoped<IStackInstanceStore>(
+    serviceProvider => new StackInstanceStore(waasConnectionString)
+);
+
+builder.Services.AddDesiredStateStore<SharedWebspaceData>(waasConnectionString);
+
+builder.Services.AddTenantStore(
+    builder.Configuration.GetConnectionString("TenantStore")
+    ?? throw new InvalidOperationException("Missing connection string for TenantStore")
+);
 
 builder.Services.AddTemporalClient(options =>
 {
