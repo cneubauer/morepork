@@ -11,7 +11,32 @@ Only the endpoints reached by `SpaceMiddlewareService.Publish` are implemented:
 | `PUT`    | `/{tenant}/webspaces/{resource_id}` | `202`   | `410` if unknown or deleted                             |
 | `DELETE` | `/{tenant}/webspaces/{resource_id}` | `202`   | `410` if unknown or already deleted                     |
 
-Everything else answers `404`. `GET /_mock/webspaces` dumps current state for debugging.
+Everything else answers `404`. `GET /_mock/webspaces` dumps current state for debugging, and
+`POST /_mock/reset` clears it back to the seed.
+
+## Seeded state
+
+The mock starts with the webspace from [`sql/04-seed.sql`](../../sql/04-seed.sql) already present:
+
+| Field           | Value                                          |
+| --------------- | ---------------------------------------------- |
+| tenant          | `demo`                                         |
+| `webspace_id`   | `43210001`                                     |
+| `ext_reference` | `1234567-5001234567-3-1`                       |
+| `host`          | `some-infong.schlund.de`                       |
+| IPv4 / IPv6     | `123.123.123.123` / `aa42:bb42:cc42:42:123:...` |
+
+This matters because the seeded desired state already carries `webspaceid: 43210001`, so
+`BackendId` returns non-zero and the worker's *first* publish is a `PUT`, not a `POST`. Against an
+empty mock that would `410`.
+
+The host and addresses are the seed's own, and are preserved across updates rather than
+regenerated — so a publish round-trip writes back the values the desired state already holds and
+`ApplyBackendResponse` is idempotent. Newly created webspaces still get generated placement.
+
+The `ext_reference` is built by `ToBackendExtensions` as
+`{stackInstanceId}-{systemInstanceId}-{namespace}-{zone}`; if the seed's ids change, update it here
+too or the duplicate-detection `303` path will not line up.
 
 ## Running
 

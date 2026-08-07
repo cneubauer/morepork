@@ -16,24 +16,93 @@ const host = process.env.HOST ?? '0.0.0.0';
 const webspaces = new Map();
 // ext_reference -> resource_id, backing the 303 pre-existing-resource behaviour
 const externalReferences = new Map();
+// resource_id -> host/addresses, kept across updates so a publish is idempotent
+const placements = new Map();
 // Deleted ids are remembered so they can answer 410 Gone instead of 404.
 const tombstoned = new Set();
 
 let nextWebspaceId = 1000;
 
+// Mirrors sql/04-seed.sql, whose desired state already carries webspaceid
+// 43210001. That webspace is therefore an existing resource: the worker's first
+// publish is a PUT, not a POST, and against an empty mock it would 410. The
+// host and addresses are the seed's own, so a publish round-trip returns what
+// the desired state already holds instead of reassigning it.
+const SEEDED_WEBSPACE = {
+    tenant: 'demo',
+    id: 43210001,
+    // ToBackendExtensions builds this as {stackInstanceId}-{systemInstanceId}-{namespace}-{zone}.
+    ext_reference: '1234567-5001234567-3-1',
+    placement: {
+        host: 'some-infong.schlund.de',
+        webspace_ipv4: '123.123.123.123',
+        webspace_ipv6: 'aa42:bb42:cc42:42:123:123:123:123',
+    },
+    document: {
+        ext_reference: '1234567-5001234567-3-1',
+        ext_correlation: '0',
+        region: 'europe',
+        state: 'enabled',
+        biofilter_enabled: true,
+        placement_tags: ['shl:standard'],
+        limits: { diskquota: '5000000000b', resource_level: 'M' },
+        owner: { uid: 654321, gid: 600, username: 'ws654321', groupname: 'ftpusers' },
+        mailconfig: {
+            host: 'some-mail-host.de',
+            port: 25,
+            username: 'some-mail-user',
+            default_sender: 'some-mail@domain.de',
+            default_envelope_from_policy: 'default_sender',
+        },
+        domains: [
+            { ext_reference: 'foo.de', domain_id: 1230001, ext_correlation: '0', domain_name: 'foo.de', connect_type: 'docroot', state: 'enabled', docroot: { path: '/', type: 'user' } },
+            { ext_reference: 'www.foo.de', domain_id: 1230002, ext_correlation: '0', domain_name: 'www.foo.de', connect_type: 'docroot', state: 'enabled', docroot: { path: '/', type: 'user' } },
+            { domain_id: 67890001, ext_correlation: 'http-access-domain-correlation-id', domain_name: 'home-5004265496.some-product-domain.de', connect_type: 'docroot', state: 'enabled', docroot: { path: '/', type: 'user' } },
+        ],
+        accounts: [
+            { ext_reference: '5c9392216d3e486f956b8e7b079f2c36', account_id: 5432101, ext_correlation: '0', username: 'a5432101', state: 'enabled', access_type: ['sftp'], account_type: 'standard', homedir_pubkeys: true, target: { path: '/', type: 'user' } },
+            { ext_reference: 'bd075fa6bdb8434d99dcb6b5e7acd570', account_id: 5432102, ext_correlation: '1', username: 'a5432102', state: 'enabled', access_type: ['sftp', 'ssh'], account_type: 'standard', homedir_pubkeys: true, target: { path: '/', type: 'user' } },
+        ],
+    },
+};
+
+function seed() {
+    const { tenant, id, ext_reference, placement, document } = SEEDED_WEBSPACE;
+
+    placements.set(id, placement);
+    webspaces.set(id, assignReadOnlyFields({ ...document }, tenant, id, placement));
+    externalReferences.set(ext_reference, id);
+
+    console.log(`[seed] ${tenant}/webspaces/${id} ext_reference=${ext_reference}`);
+}
+
 // Server-assigned fields. The spec marks these readOnly, so a client-supplied
 // value is ignored and replaced with what the mock generates.
-function assignReadOnlyFields(webspace, tenant, id) {
+//
+// `placement` carries the host and addresses an already-provisioned webspace was
+// given. Generated for new resources, but for a seeded one it is the seed's own
+// values, so a publish round-trip does not rewrite them.
+function assignReadOnlyFields(webspace, tenant, id, placement) {
+    const assigned = placement ?? generatePlacement(id, webspace.region);
+
     webspace.webspace_id = id;
     webspace.tenant = tenant;
-    webspace.host = `webspace-${id}.${webspace.region ?? 'europe'}.mock.lan`;
-    webspace.webspace_ipv4 = `192.0.2.${id % 254 + 1}`;
-    webspace.webspace_ipv6 = `2001:db8::${id.toString(16)}`;
+    webspace.host = assigned.host;
+    webspace.webspace_ipv4 = assigned.webspace_ipv4;
+    webspace.webspace_ipv6 = assigned.webspace_ipv6;
     webspace.tech_webspace_id = id + 500000;
     webspace.slot_id = id + 900000;
     webspace.tech_mode = 'shared';
     webspace.state ??= 'enabled';
     return webspace;
+}
+
+function generatePlacement(id, region) {
+    return {
+        host: `webspace-${id}.${region ?? 'europe'}.mock.lan`,
+        webspace_ipv4: `192.0.2.${id % 254 + 1}`,
+        webspace_ipv6: `2001:db8::${id.toString(16)}`,
+    };
 }
 
 // The real backend deploys asynchronously: the desired state is echoed back and
@@ -91,8 +160,10 @@ function createWebspace(response, tenant, body) {
     }
 
     const id = nextWebspaceId++;
-    const webspace = assignReadOnlyFields({ ...body }, tenant, id);
+    const placement = generatePlacement(id, body.region);
+    const webspace = assignReadOnlyFields({ ...body }, tenant, id, placement);
 
+    placements.set(id, placement);
     webspaces.set(id, webspace);
     if (externalReference) {
         externalReferences.set(externalReference, id);
@@ -111,7 +182,7 @@ function updateWebspace(response, tenant, id, body) {
     }
 
     // readOnly fields survive the update; everything else is replaced.
-    const webspace = assignReadOnlyFields({ ...body }, tenant, id);
+    const webspace = assignReadOnlyFields({ ...body }, tenant, id, placements.get(id));
     webspaces.set(id, webspace);
 
     console.log(`[update] ${tenant}/webspaces/${id}`);
@@ -128,6 +199,7 @@ function deleteWebspace(response, tenant, id) {
 
     const webspace = webspaces.get(id);
     webspaces.delete(id);
+    placements.delete(id);
     tombstoned.add(id);
     if (webspace.ext_reference) {
         externalReferences.delete(webspace.ext_reference);
@@ -141,8 +213,17 @@ const server = http.createServer(async (request, response) => {
     const { pathname } = new URL(request.url, `http://${request.headers.host ?? 'localhost'}`);
     const segments = pathname.split('/').filter(Boolean).map(decodeURIComponent);
 
-    // Convenience endpoint for inspecting mock state while debugging.
+    // Convenience endpoints for inspecting and restoring mock state while debugging.
     if (request.method === 'GET' && pathname === '/_mock/webspaces') {
+        return sendJson(response, 200, [...webspaces.values()]);
+    }
+    if (request.method === 'POST' && pathname === '/_mock/reset') {
+        webspaces.clear();
+        externalReferences.clear();
+        placements.clear();
+        tombstoned.clear();
+        nextWebspaceId = 1000;
+        seed();
         return sendJson(response, 200, [...webspaces.values()]);
     }
 
@@ -185,6 +266,8 @@ const server = http.createServer(async (request, response) => {
             return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
     }
 });
+
+seed();
 
 server.listen(port, host, () => {
     console.log(`webspace-middleware mock listening on http://${host}:${port}`);
