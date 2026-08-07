@@ -25,6 +25,7 @@ builder.Services
         builder.Configuration["Temporal:TargetHost"]!,
         "default",
         WorkflowDefinitions.DefaultTaskQueue)
+    .AddScopedActivities<WaasActivities<SharedWebspaceData, Webspace>>()
     .AddScopedActivities<SharedWebspaceActivities>()
     .AddWorkflow<PublishWebspaceWorkflow>();
 

@@ -4,6 +4,8 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddKeyPerFile("/run/secrets", optional: true);
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddControllers()

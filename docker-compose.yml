@@ -52,8 +52,6 @@ services:
   webspace-middleware-mock:
     build:
       context: ./mocks/webspace-middleware
-    ports:
-      - "8081:8081"
     # No shell in the image beyond BusyBox and no curl, so probe with node itself.
     healthcheck:
       test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:8081/_mock/webspaces', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
@@ -65,11 +63,31 @@ services:
     build:
       context: .
       dockerfile: src/Systems/Space/Classic/WaaS.Space.Classic.Worker/Dockerfile
+    environment:
+      ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=morepork;Username=developer;Password=dev"
+      Temporal__TargetHost: "temporal:7233"
+      WebspaceMiddleware__BaseUrl: "http://webspace-middleware-mock:8081/"
     depends_on:
       postgres:
         condition: service_healthy
       temporal:
         condition: service_healthy
       webspace-middleware-mock:
+        condition: service_healthy
+    restart: on-failure
+
+  waas-api:
+    build:
+      context: .
+      dockerfile: src/WaaS.WebApi/Dockerfile
+    environment:
+      ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=morepork;Username=developer;Password=dev"
+      Temporal__TargetHost: "temporal:7233"
+    ports:
+      - "5000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
         condition: service_healthy
     restart: on-failure
