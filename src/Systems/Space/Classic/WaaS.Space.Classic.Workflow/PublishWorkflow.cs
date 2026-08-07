@@ -1,36 +1,45 @@
-﻿namespace WaaS.Space.Classic.Workflow;
+namespace WaaS.Space.Classic.Workflow;
 
 using Temporalio.Workflows;
 
 [Workflow]
-public class PublishWorkflow
+[method: WorkflowInit]
+public class PublishWorkflow(ulong stackInstanceId, ulong systemInstanceId)
 {
+    private readonly HashSet<string> _pending = [];
+
     [WorkflowRun]
-    public async Task<WaasContext<SharedWebspaceData>> RunAsync(string transactionId, ulong stackInstanceId, ulong systemInstanceId)
+    public async Task RunAsync(ulong stackInstanceId, ulong systemInstanceId)
     {
-        var options = new ActivityOptions { StartToCloseTimeout = TimeSpan.FromMinutes(2) };
+        await Workflow.WaitConditionAsync(() => _pending.Count == 0 && Workflow.AllHandlersFinished);
+    }
+
+    [WorkflowUpdate]
+    public async Task<WaasContext<SharedWebspaceData>> Publish(string transactionId)
+    {
+        _pending.Add(transactionId);
 
         var waasContext = await Workflow.ExecuteActivityAsync(
             (SharedWebspaceActivities act) => act.Read(transactionId, stackInstanceId, systemInstanceId),
-            options
-        ) ?? throw new Exception($"Desired state not found for stackInstanceId: {stackInstanceId}, systemInstanceId: {systemInstanceId}");
+            new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
+        );
 
         waasContext = await Workflow.ExecuteActivityAsync(
             (SharedWebspaceActivities act) => act.Publish(waasContext),
-            options
-        ) ?? throw new Exception($"Desired state not found for stackInstanceId: {stackInstanceId}, systemInstanceId: {systemInstanceId}");
-
-        var childOptions = new ChildWorkflowOptions
-        {
-            Id = $"{transactionId}-await-notify",
-            ParentClosePolicy = ParentClosePolicy.Abandon,
-        };
-
-        await Workflow.StartChildWorkflowAsync(
-            (WaitForAckWorkflow child) => child.RunAsync(stackInstanceId, systemInstanceId),
-            childOptions
+            new() { StartToCloseTimeout = TimeSpan.FromSeconds(15) }
         );
 
         return waasContext;
+    }
+
+    [WorkflowSignal]
+    public async Task ReceiveCompletionSignalAsync(string transactionId)
+    {
+        _pending.Remove(transactionId);
+
+        await Workflow.ExecuteActivityAsync(
+            (SharedWebspaceActivities act) => act.SendNotification(transactionId),
+            new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
+        );
     }
 }

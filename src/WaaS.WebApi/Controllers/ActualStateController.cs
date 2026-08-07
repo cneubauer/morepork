@@ -12,16 +12,18 @@ public class ActualStateController(ITemporalClient temporalClient) : ControllerB
     /// <remarks>
     /// Signals the waiting workflow with the actual state reported by the backend, acknowledging a published desired state.
     /// </remarks>
-    /// <param name="transactionId" example="123e4567-e89b-12d3-a456-426614174000">The transaction identifier.</param>
-    [HttpPut("{transactionId}")]
-    public async Task<IActionResult> ReceiveActualState([FromRoute] string transactionId)
+    /// <param name="resourceId" example="webspace-1234567-5001234567">The resource identifier.</param>
+    /// <param name="transactionId" example="123e4567-e89b-12d3-a456-426614174000">The transaction identifier, as sent to the backend as the correlation id.</param>
+    [HttpPut("{resourceId}/{transactionId}")]
+    public async Task<IActionResult> ReceiveActualState(
+        [FromRoute] string resourceId,
+        [FromRoute] string transactionId
+    )
     {
-        var childWorkflowId = $"{transactionId}-await-notify";
-
-        var workflowHandle = temporalClient.GetWorkflowHandle<WaitForAckWorkflow>(childWorkflowId);
+        var workflowHandle = temporalClient.GetWorkflowHandle<PublishWorkflow>(resourceId);
 
         await workflowHandle.SignalAsync(
-            workflow => workflow.ReceiveCompletionSignalAsync()
+            workflow => workflow.ReceiveCompletionSignalAsync(transactionId)
         );
 
         return Ok();

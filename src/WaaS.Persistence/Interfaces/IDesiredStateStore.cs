@@ -8,6 +8,7 @@ public interface IDesiredStateStore<TDesiredState>
     Task<IDesiredState<TDesiredState>> Create(NpgsqlTransaction transaction, IStackInstance stackInstance);
     Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
     Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
+    Task<IDesiredState<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, bool force = false);
     Task<IDesiredState<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, bool force = false);
 
     Task Schedule(NpgsqlTransaction transaction, string transactionId, ulong stackInstanceId, ulong systemInstanceId);

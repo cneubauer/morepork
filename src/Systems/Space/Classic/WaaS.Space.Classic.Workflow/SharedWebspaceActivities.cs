@@ -36,7 +36,7 @@ public class SharedWebspaceActivities(
     }
 
     [Activity]
-    public async Task<WaasContext<SharedWebspaceData>?> Publish(WaasContext<SharedWebspaceData> waasContext)
+    public async Task<WaasContext<SharedWebspaceData>> Publish(WaasContext<SharedWebspaceData> waasContext)
     {
         var desiredState = await webspaceMiddlewareService.Publish(
             waasContext.Tenant.Name,
@@ -45,6 +45,8 @@ public class SharedWebspaceActivities(
             waasContext.TransactionId
         );
 
+        await desiredStateStore.Save(desiredState, force: true);
+
         return waasContext with
         {
             DesiredState = desiredState,
@@ -52,8 +54,10 @@ public class SharedWebspaceActivities(
     }
 
     [Activity]
-    public async Task SendNotification(ulong stackInstanceId, ulong systemInstanceId)
+    public async Task SendNotification(string transactionId)
     {
-        logger.LogInformation("Sending notification for stackInstanceId: {StackInstanceId}, systemInstanceId: {SystemInstanceId}", stackInstanceId, systemInstanceId);
+        logger.LogInformation("Sending notification for transactionId: {TransactionId}", transactionId);
+
+        await Task.CompletedTask;
     }
 }

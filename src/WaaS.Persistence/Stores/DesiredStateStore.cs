@@ -198,6 +198,21 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             Version = (long?)version,
         });
     }
+
+    public async Task<IDesiredState<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, bool force = false)
+    {
+        using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        var result = await Save(transaction, desiredState, force);
+
+        await transaction.CommitAsync();
+
+        return result;
+    }
+
     public async Task<IDesiredState<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, bool force = false)
     {
         var parameters = new

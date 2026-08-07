@@ -10,12 +10,12 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
 
     private const string ClaimSql = """
         DELETE FROM outbox
-        WHERE workflow_id IN (
-            SELECT workflow_id FROM outbox
+        WHERE transaction_id IN (
+            SELECT transaction_id FROM outbox
             WHERE leased_until < (NOW() AT TIME ZONE 'utc')
-            ORDER BY workflow_id FOR UPDATE SKIP LOCKED LIMIT 10
+            ORDER BY transaction_id FOR UPDATE SKIP LOCKED LIMIT 10
         )
-        RETURNING workflow_id AS WorkflowId, stack_instance_id AS StackInstanceId, system_instance_id AS SystemInstanceId;
+        RETURNING transaction_id AS TransactionId, stack_instance_id AS StackInstanceId, system_instance_id AS SystemInstanceId;
         """;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -53,29 +53,34 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
         {
             logger.LogWarning(
                 "Recovering abandoned outbox entry {TransactionId} for stack instance {StackInstanceId}, system instance {SystemInstanceId}",
-                entry.WorkflowId,
+                entry.TransactionId,
                 entry.StackInstanceId,
                 entry.SystemInstanceId);
 
-            var options = new WorkflowOptions
-            {
-                Id = entry.WorkflowId,
-                TaskQueue = WorkflowDefinitions.DefaultTaskQueue,
-                IdReusePolicy = WorkflowIdReusePolicy.RejectDuplicate,
-            };
+            var stackInstanceId = (ulong)entry.StackInstanceId;
+            var systemInstanceId = (ulong)entry.SystemInstanceId;
 
-            await temporalClient.StartWorkflowAsync(
-                (PublishWorkflow workflow) => workflow.RunAsync(
-                    entry.WorkflowId,
-                    (ulong)entry.StackInstanceId,
-                    (ulong)entry.SystemInstanceId
-                ),
-                options
+            var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
+
+            // Must be update-with-start, not a plain start: a reconciler created with an empty
+            // pending set would publish nothing and idle out.
+            var startOperation = WithStartWorkflowOperation.Create(
+                (PublishWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId),
+                new WorkflowOptions
+                {
+                    Id = resourceId,
+                    TaskQueue = WorkflowDefinitions.DefaultTaskQueue,
+                    IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
+                });
+
+            await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
+                (PublishWorkflow workflow) => workflow.Publish(entry.TransactionId),
+                new WorkflowUpdateWithStartOptions(startOperation)
             );
         }
 
         await transaction.CommitAsync(stoppingToken);
     }
 
-    private sealed record OutboxEntry(string WorkflowId, long StackInstanceId, long SystemInstanceId);
+    private sealed record OutboxEntry(string TransactionId, long StackInstanceId, long SystemInstanceId);
 }

@@ -50,9 +50,7 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
 
         desiredState = await desiredStateStore.Save(transaction, desiredState);
 
-        var workflowId = $"{transactionId}-webspace-update";
-
-        await desiredStateStore.Schedule(transaction, workflowId, stackInstanceId, systemInstanceId);
+        await desiredStateStore.Schedule(transaction, transactionId, stackInstanceId, systemInstanceId);
 
         await transaction.CommitAsync();
 
@@ -60,30 +58,29 @@ public class SharedWebspaceController(ITemporalClient temporalClient, ITenantSto
 
         #region Dispath Workflow
 
-        using var dispathTransaction = await desiredStateStore.BeginTransaction();
+        using var dispatchTransaction = await desiredStateStore.BeginTransaction();
 
-        await desiredStateStore.Dispatched(dispathTransaction, workflowId);
+        await desiredStateStore.Dispatched(dispatchTransaction, transactionId);
 
-        await temporalClient.StartWorkflowAsync(
-            (PublishWorkflow workflow) => workflow.RunAsync(transactionId, stackInstanceId, systemInstanceId),
+        var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
+
+        var startOperation = WithStartWorkflowOperation.Create(
+            (PublishWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId),
             new WorkflowOptions
             {
-                Id = workflowId,
+                Id = resourceId,
                 TaskQueue = WorkflowDefinitions.DefaultTaskQueue,
-                IdReusePolicy = WorkflowIdReusePolicy.RejectDuplicate,
+                IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
+            });
+
+        var result = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
+            (PublishWorkflow workflow) => workflow.Publish(transactionId),
+            new WorkflowUpdateWithStartOptions(startOperation)
+            {
                 Rpc = new RpcOptions { CancellationToken = HttpContext.RequestAborted },
             });
 
-        await dispathTransaction.CommitAsync();
-
-        #endregion
-
-        #region Await Result
-
-        var result = await temporalClient
-            .GetWorkflowHandle(workflowId)
-            .GetResultAsync<WaasContext<SharedWebspaceData>>(
-                rpcOptions: new RpcOptions { CancellationToken = HttpContext.RequestAborted });
+        await dispatchTransaction.CommitAsync();
 
         #endregion
 
