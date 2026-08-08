@@ -4,7 +4,7 @@ using Temporalio.Api.Enums.V1;
 namespace WaaS.WebApi;
 
 [ApiController]
-[Route("api/{tenant}/stack-instances/{stackInstanceId}/stretchspaces")]
+[Route("api/{tenant}/stack-instances/{stackInstanceId}/webspaces")]
 public class SharedWebspaceController(
     ITemporalClient temporalClient,
     ITenantStore tenantStore,

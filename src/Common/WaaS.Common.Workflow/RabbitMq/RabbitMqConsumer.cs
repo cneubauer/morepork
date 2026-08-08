@@ -9,7 +9,7 @@ public class RabbitMqConsumer(IOptions<RabbitMqOptions> options, ILogger<RabbitM
     private readonly RabbitMqOptions _options = options.Value;
 
     public async Task StartConsuming(
-        Func<byte[], string?, Task<bool>> handler,
+        Func<byte[], string, string, Task<bool>> handler,
         CancellationToken cancellationToken)
     {
         var factory = new ConnectionFactory
@@ -37,7 +37,11 @@ public class RabbitMqConsumer(IOptions<RabbitMqOptions> options, ILogger<RabbitM
 
             try
             {
-                var ack = await handler(body, args.BasicProperties.CorrelationId);
+                var ack = await handler(
+                    body,
+                    args.BasicProperties.CorrelationId ?? Guid.NewGuid().ToString(),
+                    args.BasicProperties.ReplyTo ?? "unknown"
+                );
 
                 if (ack)
                     await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: cancellationToken);

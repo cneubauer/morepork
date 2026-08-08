@@ -14,21 +14,22 @@ builder.Configuration.AddKeyPerFile("/run/secrets", optional: true);
 var waasConnectionString = builder.Configuration.GetConnectionString("WaaS")
     ?? throw new InvalidOperationException("Missing connection string for WaaS");
 
-builder.Services.AddScoped<IStackInstanceStore>(
-    serviceProvider => new StackInstanceStore(waasConnectionString)
-);
-builder.Services.AddDesiredStateStore<SharedWebspaceData>(waasConnectionString);
-builder.Services.AddTenantStore(waasConnectionString);
-
-builder.Services.AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Webspace>, WebspaceMiddlewareService>(
-    client => client.BaseAddress =
-        new Uri(builder.Configuration["WebspaceMiddleware:BaseUrl"]!));
+builder.Services
+    .AddScoped<IStackInstanceStore>(
+        serviceProvider => new StackInstanceStore(waasConnectionString)
+    )
+    .AddDesiredStateStore<SharedWebspaceData>(waasConnectionString)
+    .AddTenantStore(waasConnectionString)
+    .AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Webspace>, WebspaceMiddlewareService>(
+        client => client.BaseAddress = new Uri(builder.Configuration["WebspaceMiddleware:BaseUrl"]
+            ?? throw new InvalidOperationException("Missing WebspaceMiddleware:BaseUrl"))
+    );
 
 
 builder.Services
     .AddHostedTemporalWorker(
         builder.Configuration["Temporal:TargetHost"]!,
-        "default",
+        WorkflowDefinitions.ClientNamespace,
         WorkflowDefinitions.DefaultTaskQueue)
     .AddScopedActivities<WaasActivities<SharedWebspaceData>>()
     .AddScopedActivities<SharedWebspaceActivities>()
@@ -39,9 +40,6 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Liveness excludes every tagged check, so it answers as long as the process is
-// running. Readiness runs the "ready"-tagged checks, so a database outage takes
-// the pod out of rotation without triggering a restart loop.
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 

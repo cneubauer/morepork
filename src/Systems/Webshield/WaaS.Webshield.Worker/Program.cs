@@ -16,27 +16,21 @@ var waasConnectionString = builder.Configuration.GetConnectionString("WaaS")
 var rabbitMqConnectionString = builder.Configuration.GetConnectionString("RabbitMq")
     ?? throw new InvalidOperationException("Missing connection string for RabbitMq");
 
-builder.Services.AddScoped<IStackInstanceStore>(
-    serviceProvider => new StackInstanceStore(waasConnectionString)
-);
-builder.Services.AddDesiredStateStore<WebshieldData>(waasConnectionString);
-builder.Services.AddTenantStore(waasConnectionString);
-
-builder.Services.AddScoped<ISslProxyRepository>(
-    serviceProvider => new SslProxyRepository(waasConnectionString)
-);
-
-builder.Services.AddSingleton<IRabbitMqPublisher>(
-    serviceProvider => new RabbitMqPublisher(
-        rabbitMqConnectionString,
-        builder.Configuration["RabbitMq:Exchange"]
-            ?? throw new InvalidOperationException("Missing RabbitMq:Exchange"))
-);
+builder.Services
+    .AddScoped<IStackInstanceStore>(
+        serviceProvider => new StackInstanceStore(waasConnectionString)
+    )
+    .AddDesiredStateStore<WebshieldData>(waasConnectionString)
+    .AddTenantStore(waasConnectionString)
+    .AddScoped<ISslProxyRepository>(
+        serviceProvider => new SslProxyRepository(waasConnectionString)
+    )
+    .AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
 
 builder.Services
     .AddHostedTemporalWorker(
         builder.Configuration["Temporal:TargetHost"]!,
-        "default",
+        WorkflowDefinitions.ClientNamespace,
         WorkflowDefinitions.DefaultTaskQueue)
     .AddScopedActivities<WaasActivities<WebshieldData>>()
     .AddScopedActivities<WebshieldActivities>()
@@ -47,9 +41,6 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Liveness excludes every tagged check, so it answers as long as the process is
-// running. Readiness runs the "ready"-tagged checks, so a database outage takes
-// the pod out of rotation without triggering a restart loop.
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 

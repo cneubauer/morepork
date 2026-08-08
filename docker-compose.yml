@@ -97,8 +97,10 @@ services:
       dockerfile: src/Systems/Webshield/WaaS.Webshield.Worker/Dockerfile
     environment:
       ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
-      ConnectionStrings__RabbitMq: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/"
       Temporal__TargetHost: "temporal:7233"
+      RabbitMq__Hostname: "rabbitmq"
+      RabbitMq__Username: "${RABBITMQ_USER}"
+      RabbitMq__Password: "${RABBITMQ_PASSWORD}"
     depends_on:
       postgres:
         condition: service_healthy

@@ -18,7 +18,7 @@ public class PublishWebshieldWorkflow(ulong stackInstanceId)
     public IReadOnlyCollection<string> Acknowledged => [.. _acknowledged];
 
     [WorkflowRun]
-    public async Task<IReadOnlyCollection<string>> RunAsync(ulong stackInstanceId, ulong systemInstanceId)
+    public async Task<IReadOnlyCollection<string>> RunAsync(ulong stackInstanceId)
     {
         await Workflow.WaitConditionAsync(() => _pending.Count == 0 && Workflow.AllHandlersFinished);
         return [.. _acknowledged];

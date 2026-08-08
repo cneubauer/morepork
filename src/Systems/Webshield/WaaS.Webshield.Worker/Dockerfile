@@ -19,12 +19,19 @@ COPY --parents Directory.Packages.props src/**/*.csproj ./
 
 # NuGet's HTTP cache is useless across builds (it is not in the layer), so drop
 # it; the mount keeps the package cache warm between builds instead.
-RUN --mount=type=cache,target=/root/.nuget/packages \
+#
+# id + sharing=locked, not the default: compose builds these services in
+# parallel and they share this one cache. Unlocked, two restores race inside
+# the same package directory and one deletes the other's half-written
+# extraction temp file, failing with 'Could not find file .../<random>.tmp'.
+# locked serialises the writers but keeps the cache shared; private would
+# give each service its own copy and throw away the reuse.
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
     dotnet restore "${PROJECT}"
 
 COPY src/ src/
 
-RUN --mount=type=cache,target=/root/.nuget/packages \
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
     dotnet publish "${PROJECT}" \
     --configuration ${BUILD_CONFIGURATION} \
     --no-restore \
