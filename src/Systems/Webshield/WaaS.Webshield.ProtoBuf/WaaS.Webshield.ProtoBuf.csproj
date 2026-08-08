@@ -13,11 +13,13 @@
     <ProtoFiles Include="Proto\*.proto" />
   </ItemGroup>
 
-  <!-- Regenerate C# from .proto files. Skip in CI via /p:SkipProtogen=true -->
   <Target Name="GenerateProtobuf" BeforeTargets="BeforeBuild"
-          Inputs="@(ProtoFiles)" Outputs="Generated\%(ProtoFiles.Filename).cs"
+          Inputs="@(ProtoFiles)" 
+          Outputs="@(ProtoFiles->'Generated/%(Filename).cs')"
           Condition="'$(SkipProtogen)' != 'true'">
+          
+    <MakeDir Directories="Generated" />
     <Exec Command="dotnet tool restore" />
-    <Exec Command="dotnet protogen --csharp_out=Generated -IProto +names=original +nullablevaluetype=yes +repeatedaslist=yes --package=WaaS.Webshield.ProtoBuf Proto\*.proto" />
+    <Exec Command="dotnet protogen --csharp_out=Generated -IProto +names=original +nullablevaluetype=yes +repeatedaslist=yes --package=WaaS.Webshield.ProtoBuf @(ProtoFiles->'%(Filename)%(Extension)', ' ')" />
   </Target>
 </Project>
