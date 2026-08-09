@@ -1,8 +1,13 @@
 using Temporalio.Activities;
+using WaaS.Persistence;
 
 namespace WaaS.Webshield.Workflow;
 
-public class WebshieldActivities(ISslProxyRepository sslProxyRepository, IRabbitMqPublisher statePublisher)
+public class WebshieldActivities(
+    ISslProxyRepository sslProxyRepository,
+    IRabbitMqPublisher statePublisher,
+    IWebshieldMappingService webshieldMappingService
+)
 {
     [Activity]
     public async Task<IReadOnlyList<string>> SendToBackend(WaasContext<WebshieldData> waasContext)
@@ -25,5 +30,17 @@ public class WebshieldActivities(ISslProxyRepository sslProxyRepository, IRabbit
         await statePublisher.Publish(routingKey, body, waasContext.TransactionId);
 
         return nodes;
+    }
+
+    [Activity]
+    public async Task SyncWebshieldMappings(
+        StackInstance stackInstance,
+        List<WebshieldMapping> mappings
+    )
+    {
+        await webshieldMappingService.SyncWebshieldMappings(
+            stackInstance,
+            mappings
+        );
     }
 }

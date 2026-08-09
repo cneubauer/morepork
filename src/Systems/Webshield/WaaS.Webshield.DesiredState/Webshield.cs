@@ -2,7 +2,7 @@ namespace WaaS.Webshield.DesiredState;
 
 public class Webshield
 {
-    public List<Mapping> Mappings { get; set; } = [];
+    public List<ProxyMapping> Mappings { get; set; } = [];
     public List<Certificate> Certificates { get; set; } = [];
     public List<string> PublicIPs { get; set; } = [];
     public List<string> CdnIPs { get; set; } = [];

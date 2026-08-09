@@ -1,6 +1,6 @@
 namespace WaaS.Webshield.DesiredState;
 
-public class Mapping
+public class ProxyMapping
 {
     public string Domain { get; set; } = "";
     public string Destination { get; set; } = "";

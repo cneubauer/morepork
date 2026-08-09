@@ -1,4 +1,4 @@
-﻿<!-- Sdk.Web, not Sdk.Worker: Kubernetes probes need an HTTP endpoint, and the
+<!-- Sdk.Web, not Sdk.Worker: Kubernetes probes need an HTTP endpoint, and the
      shared framework this SDK references also carries KeyPerFile configuration.
      The standalone KeyPerFile package only exists as an 11.0 preview, so this
      keeps the whole dependency graph on stable 10.0. -->
@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WaaS.Space.Classic.Workflow\WaaS.Space.Classic.Workflow.csproj" />
     <ProjectReference Include="..\..\WaaS.Space.Workflow\WaaS.Space.Workflow.csproj" />
+    <ProjectReference Include="..\..\..\Webshield\WaaS.Webshield.DesiredState\WaaS.Webshield.DesiredState.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,6 +4,8 @@ using WaaS.Space.Classic.Workflow;
 using WaaS.Common.Workflow;
 using WebspaceMiddleware;
 using WaaS.Space.Workflow;
+using WaaS.Webshield.DesiredState;
+using WaaS.Webshield.Workflow;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +21,9 @@ builder.Services
         serviceProvider => new StackInstanceStore(waasConnectionString)
     )
     .AddDesiredStateStore<SharedWebspaceData>(waasConnectionString)
+    .AddDesiredStateStore<WebshieldData>(waasConnectionString)
     .AddTenantStore(waasConnectionString)
+    .AddScoped<IWebshieldMappingService, WebshieldMappingService>()
     .AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Webspace>, WebspaceMiddlewareService>(
         client => client.BaseAddress = new Uri(builder.Configuration["WebspaceMiddleware:BaseUrl"]
             ?? throw new InvalidOperationException("Missing WebspaceMiddleware:BaseUrl"))
@@ -33,6 +37,7 @@ builder.Services
         WorkflowDefinitions.DefaultTaskQueue)
     .AddScopedActivities<WaasActivities<SharedWebspaceData>>()
     .AddScopedActivities<SharedWebspaceActivities>()
+    .AddScopedActivities<WebshieldActivities>()
     .AddWorkflow<PublishWebspaceWorkflow>();
 
 builder.Services.AddHealthChecks()

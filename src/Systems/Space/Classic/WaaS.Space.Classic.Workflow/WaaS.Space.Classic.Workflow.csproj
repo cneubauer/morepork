@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -14,6 +14,7 @@
     <ProjectReference Include="..\WaaS.Space.Classic.DesiredState\WaaS.Space.Classic.DesiredState.csproj" />
     <ProjectReference Include="..\WaaS.Space.Classic.ViewModel\WaaS.Space.Classic.ViewModel.csproj" />
     <ProjectReference Include="..\..\WaaS.Space.Workflow\WaaS.Space.Workflow.csproj" />
+    <ProjectReference Include="..\..\..\Webshield\WaaS.Webshield.Workflow\WaaS.Webshield.Workflow.csproj" />
     <ProjectReference Include="..\..\..\..\Common\WaaS.Common.Workflow\WaaS.Common.Workflow.csproj" />
   </ItemGroup>
 

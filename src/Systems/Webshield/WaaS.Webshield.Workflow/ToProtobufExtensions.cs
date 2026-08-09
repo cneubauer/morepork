@@ -44,7 +44,7 @@ public static class ToProtobufExtensions
     }
 
     public static ProtoBuf.Mapping ToProtobuf(
-        this DesiredState.Mapping mapping,
+        this DesiredState.ProxyMapping mapping,
         ulong stackInstanceId,
         IReadOnlyDictionary<string, (string waId, string encryptedWaToken)>? resolvedAnalytics)
     {
