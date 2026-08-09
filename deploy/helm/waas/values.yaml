@@ -3,6 +3,9 @@
 # and maintain, and anything not exposed cannot be changed without editing
 # templates.
 
+nameOverride: ""
+fullnameOverride: ""
+
 temporal:
   enabled: false
   # Address used when the subchart is disabled and Temporal runs elsewhere.
@@ -16,9 +19,22 @@ image:
   pullPolicy: IfNotPresent
   # tag defaults to .Chart.AppVersion when empty
 
-# The secret holding ConnectionStrings__WaaS etc. Created out-of-band by
-# External Secrets or Sealed Secrets — deliberately not templated, so plaintext
-# credentials never live in a values file.
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: false
+
+# Secret configuration. For production, created out-of-band by External Secrets
+# or Sealed Secrets (create: false). For local testing, set create: true and populate data.
+secret:
+  create: false
+  name: waas-secrets
+  data: {}
+
+# Legacy value fallback
 secretName: waas-secrets
 
 api:
@@ -29,6 +45,7 @@ api:
       memory: 192Mi
     limits:
       memory: 512Mi
+  env: {}
   ingress:
     enabled: false
     className: nginx
@@ -61,3 +78,4 @@ resourcesDefault:
     memory: 192Mi
   limits:
     memory: 512Mi
+

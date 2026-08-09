@@ -1,19 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-api
+  name: {{ include "waas.fullname" . }}-api
   labels:
-    app.kubernetes.io/name: waas-api
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
 spec:
   replicas: {{ .Values.api.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: waas-api
+      app.kubernetes.io/name: {{ include "waas.name" . }}-api
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: waas-api
+        {{- include "waas.labels" . | nindent 8 }}
+        app.kubernetes.io/name: {{ include "waas.name" . }}-api
+        app.kubernetes.io/component: api
     spec:
+      serviceAccountName: {{ include "waas.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         {{- include "waas.waitForTemporal" . | nindent 8 }}
       containers:
@@ -26,6 +35,10 @@ spec:
           env:
             - name: Temporal__TargetHost
               value: {{ include "waas.temporalAddress" . }}
+            {{- range $key, $value := .Values.api.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
           # AddKeyPerFile("/run/secrets") in Program.cs reads each file as a config
           # key, so no env wiring is needed for the connection string here.
           volumeMounts:
@@ -47,15 +60,19 @@ spec:
       volumes:
         - name: secrets
           secret:
-            secretName: {{ .Values.secretName }}
+            secretName: {{ default .Values.secretName .Values.secret.name }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-api
+  name: {{ include "waas.fullname" . }}-api
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
 spec:
   selector:
-    app.kubernetes.io/name: waas-api
+    app.kubernetes.io/name: {{ include "waas.name" . }}-api
+    app.kubernetes.io/instance: {{ .Release.Name }}
   ports:
     - name: http
       port: 80
@@ -65,7 +82,10 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Release.Name }}-api
+  name: {{ include "waas.fullname" . }}-api
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
 spec:
   ingressClassName: {{ .Values.api.ingress.className }}
   rules:
@@ -76,7 +96,8 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ .Release.Name }}-api
+                name: {{ include "waas.fullname" . }}-api
                 port:
                   name: http
 {{- end }}
+

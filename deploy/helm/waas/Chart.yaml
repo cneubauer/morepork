@@ -1,9 +1,16 @@
 apiVersion: v2
 name: waas
-description: WaaS Manager — API and Temporal workers
+description: WaaS (Webhosting-as-a-Service) Manager — API and Temporal workers
 type: application
 version: 0.1.0        # chart version, bumped on template changes
 appVersion: "1.4.0"   # default image tag, overridable per release
+keywords:
+  - webhosting
+  - waas
+  - temporal
+  - dotnet
+maintainers:
+  - name: WaaS Platform Team
 
 # Helm can pull the infrastructure in as subcharts, so one `helm install` brings
 # up Temporal and RabbitMQ too. Kustomize has no equivalent — there you install
@@ -24,3 +31,4 @@ appVersion: "1.4.0"   # default image tag, overridable per release
 #     version: 15.5.5
 #     repository: https://charts.bitnami.com/bitnami
 #     condition: rabbitmq.enabled
+

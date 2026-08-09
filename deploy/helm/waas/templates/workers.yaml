@@ -11,19 +11,29 @@ worker added.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ $.Release.Name }}-{{ $worker.image }}
+  name: {{ include "waas.fullname" $ }}-{{ $worker.image }}
   labels:
+    {{- include "waas.labels" $ | nindent 4 }}
     app.kubernetes.io/name: {{ $worker.image }}
+    app.kubernetes.io/component: worker
 spec:
   replicas: {{ $worker.replicas | default 1 }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ $worker.image }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
   template:
     metadata:
       labels:
+        {{- include "waas.labels" $ | nindent 8 }}
         app.kubernetes.io/name: {{ $worker.image }}
+        app.kubernetes.io/component: worker
     spec:
+      serviceAccountName: {{ include "waas.serviceAccountName" $ }}
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         {{- include "waas.waitForTemporal" $ | nindent 8 }}
       containers:
@@ -63,6 +73,7 @@ spec:
       volumes:
         - name: secrets
           secret:
-            secretName: {{ $.Values.secretName }}
+            secretName: {{ default $.Values.secretName $.Values.secret.name }}
 {{- end }}
 {{- end }}
+
