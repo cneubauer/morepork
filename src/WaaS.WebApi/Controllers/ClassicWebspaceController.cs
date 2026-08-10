@@ -5,7 +5,7 @@ namespace WaaS.WebApi;
 
 [ApiController]
 [Route("api/{tenant}/stack-instances/{stackInstanceId}/webspaces")]
-public class SharedWebspaceController(
+public class ClassicWebspaceController(
     ITemporalClient temporalClient,
     ITenantStore tenantStore,
     IStackInstanceStore stackInstanceStore,
@@ -13,19 +13,19 @@ public class SharedWebspaceController(
 ) : ControllerBase
 {
     /// <summary>
-    /// Update Shared Webspace
+    /// Update Classic Webspace
     /// </summary>
     /// <remarks>
-    /// Updates the desired state of a shared webspace. This operation is asynchronous and may take some time to complete. The response will indicate whether the update was accepted, completed successfully, or if there were validation errors.
+    /// Updates the desired state of a classic webspace. This operation is asynchronous and may take some time to complete. The response will indicate whether the update was accepted, completed successfully, or if there were validation errors.
     /// </remarks>
     /// <param name="tenant" example="demo">The tenant identifier.</param>
     /// <param name="stackInstanceId" example="1234567">The stack instance identifier.</param>
     /// <param name="systemInstanceId" example="5001234567">The system instance identifier.</param>
-    /// <param name="webspace">The shared webspace data to update.</param>
+    /// <param name="webspace">The classic webspace data to update.</param>
     /// <param name="transactionId" example="waas-update-3fa85f64-5717-4562-b3fc-2c963f66afa6">The transaction identifier. Defaults to a generated value when omitted.</param>
     /// <returns>The updated shared webspace.</returns>
     [HttpPut("{systemInstanceId}")]
-    public async Task<IActionResult> UpdateSharedWebspace(
+    public async Task<IActionResult> UpdateClassicWebspace(
         [FromRoute] string tenant,
         [FromRoute] ulong stackInstanceId,
         [FromRoute] ulong systemInstanceId,
@@ -81,7 +81,7 @@ public class SharedWebspaceController(
         var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
         var startOperation = WithStartWorkflowOperation.Create(
-            (PublishWebspaceWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId),
+            (PublishClassicWebspaceWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId),
             new WorkflowOptions
             {
                 Id = resourceId,
@@ -90,7 +90,7 @@ public class SharedWebspaceController(
             });
 
         var result = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-            (PublishWebspaceWorkflow workflow) => workflow.PublishDesiredState(transactionId),
+            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(transactionId),
             new WorkflowUpdateWithStartOptions(startOperation)
             {
                 Rpc = new RpcOptions { CancellationToken = HttpContext.RequestAborted },

@@ -38,7 +38,7 @@ builder.Services
     .AddScopedActivities<WaasActivities<SharedWebspaceData>>()
     .AddScopedActivities<SharedWebspaceActivities>()
     .AddScopedActivities<WebshieldActivities>()
-    .AddWorkflow<PublishWebspaceWorkflow>();
+    .AddWorkflow<PublishClassicWebspaceWorkflow>();
 
 builder.Services.AddHealthChecks()
     .AddWaasDatabaseCheck(waasConnectionString);

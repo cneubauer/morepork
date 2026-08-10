@@ -6,7 +6,7 @@ using WaaS.Webshield.Workflow;
 
 [Workflow]
 [method: WorkflowInit]
-public class PublishWebspaceWorkflow(ulong stackInstanceId, ulong systemInstanceId)
+public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemInstanceId)
 {
     private readonly HashSet<string> _pending = [];
     private readonly HashSet<string> _acknowledged = [];
