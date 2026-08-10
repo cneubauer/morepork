@@ -51,7 +51,8 @@ public class SharedWebspaceController(
 
         #region Update Desired State
 
-        using var transaction = await desiredStateStore.BeginTransaction();
+        await using var transaction = await desiredStateStore.BeginTransaction();
+        await using var connection = transaction.Connection;
 
         await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
 
@@ -72,7 +73,8 @@ public class SharedWebspaceController(
 
         #region Dispath Workflow
 
-        using var dispatchTransaction = await desiredStateStore.BeginTransaction();
+        await using var dispatchTransaction = await desiredStateStore.BeginTransaction();
+        await using var dispatchConnection = dispatchTransaction.Connection;
 
         await desiredStateStore.Dispatched(dispatchTransaction, transactionId);
 

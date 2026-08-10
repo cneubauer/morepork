@@ -10,11 +10,14 @@ public class WebshieldMappingService(IDesiredStateStore<WebshieldData> webshield
         IEnumerable<WebshieldMapping> mappings
     )
     {
-        var webshieldDesiredState = await webshieldDesiredStateStore.Read(stackInstance.Id, 0);
+        await using var transaction = await webshieldDesiredStateStore.BeginTransaction();
+        await using var connection = transaction.Connection;
 
-        if (webshieldDesiredState is null)
-        {
-            webshieldDesiredState = new DesiredState<WebshieldData>
+        await webshieldDesiredStateStore.Lock(transaction, stackInstance.Id, 0);
+
+        var webshieldDesiredState = await webshieldDesiredStateStore.Read(transaction, stackInstance.Id, 0);
+
+        webshieldDesiredState ??= new DesiredState<WebshieldData>
             {
                 StackInstanceId = stackInstance.Id,
                 Tenant = stackInstance.TenantId,
@@ -22,7 +25,6 @@ public class WebshieldMappingService(IDesiredStateStore<WebshieldData> webshield
                 SystemInstanceId = 0,
                 Data = new WebshieldData(),
             };
-        }
 
         var existingMappings = webshieldDesiredState.Data.Mappings;
 
@@ -52,6 +54,8 @@ public class WebshieldMappingService(IDesiredStateStore<WebshieldData> webshield
             }
         }
 
-        await webshieldDesiredStateStore.Save(webshieldDesiredState);
+        await webshieldDesiredStateStore.Save(transaction, webshieldDesiredState);
+
+        await transaction.CommitAsync();
     }
 }

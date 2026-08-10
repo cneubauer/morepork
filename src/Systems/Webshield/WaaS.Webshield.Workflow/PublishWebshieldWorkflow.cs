@@ -24,8 +24,8 @@ public class PublishWebshieldWorkflow(ulong stackInstanceId)
         return [.. _acknowledged];
     }
 
-    [WorkflowUpdate]
-    public async Task<WaasContext<WebshieldData>> PublishDesiredState(string transactionId)
+    [WorkflowSignal]
+    public async Task PublishDesiredState(string transactionId)
     {
         var waasContext = await Workflow.ExecuteActivityAsync(
             (WaasActivities<WebshieldData> act) => act.ReadWaasContext(transactionId, stackInstanceId, 0),
@@ -38,8 +38,6 @@ public class PublishWebshieldWorkflow(ulong stackInstanceId)
         );
 
         _pending.Add(transactionId, [.. nodes]);
-
-        return waasContext;
     }
 
     [WorkflowSignal]

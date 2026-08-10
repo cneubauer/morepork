@@ -1,5 +1,6 @@
 namespace WaaS.Space.Classic.Workflow;
 
+using Temporalio.Api.Enums.V1;
 using Temporalio.Workflows;
 using WaaS.Webshield.Workflow;
 
@@ -54,11 +55,12 @@ public class PublishWebspaceWorkflow(ulong stackInstanceId, ulong systemInstance
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
         );
 
-        await Workflow.ExecuteChildWorkflowAsync(
-            (PublishWebshieldWorkflow wf) => wf.PublishDesiredState(transactionId),
-            new ChildWorkflowOptions
+        await Workflow.SignalWithStartWorkflowAsync(
+            (PublishWebshieldWorkflow wf) => wf.RunAsync(stackInstanceId),
+            wf => wf.PublishDesiredState(transactionId),
+            new SignalWithStartWorkflowOptions($"webshield-{stackInstanceId}", WorkflowDefinitions.DefaultTaskQueue)
             {
-                Id = $"webshield-{stackInstanceId}",
+                IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
             }
         );
 
