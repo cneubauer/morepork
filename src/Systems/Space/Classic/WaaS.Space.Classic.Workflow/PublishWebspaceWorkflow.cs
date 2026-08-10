@@ -35,7 +35,7 @@ public class PublishWebspaceWorkflow(ulong stackInstanceId, ulong systemInstance
         );
 
         waasContext = await Workflow.ExecuteActivityAsync(
-            (SharedWebspaceActivities act) => act.SendToBackend(waasContext),
+            (SharedWebspaceActivities act) => act.SendToTechMw(waasContext),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(15) }
         );
 
@@ -56,8 +56,8 @@ public class PublishWebspaceWorkflow(ulong stackInstanceId, ulong systemInstance
         );
 
         await Workflow.SignalWithStartWorkflowAsync(
-            (PublishWebshieldWorkflow wf) => wf.RunAsync(stackInstanceId),
-            wf => wf.PublishDesiredState(transactionId),
+            (PublishWebshieldWorkflow wf) => wf.StartPublishingWebshieldMappings(stackInstanceId),
+            wf => wf.PublishWebshieldMappings(transactionId),
             new SignalWithStartWorkflowOptions($"webshield-{stackInstanceId}", WorkflowDefinitions.DefaultTaskQueue)
             {
                 IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,

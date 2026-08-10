@@ -10,7 +10,7 @@ public class WebshieldActivities(
 )
 {
     [Activity]
-    public async Task<IReadOnlyList<string>> SendToBackend(WaasContext<WebshieldData> waasContext)
+    public async Task<IReadOnlyList<string>> SendToWebshieldNodes(WaasContext<WebshieldData> waasContext)
     {
         var nodes = await sslProxyRepository.GetWebshieldNodes(waasContext.StackInstance.Zone);
 

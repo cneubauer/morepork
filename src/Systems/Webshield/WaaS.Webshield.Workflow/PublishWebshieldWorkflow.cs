@@ -18,14 +18,14 @@ public class PublishWebshieldWorkflow(ulong stackInstanceId)
     public IReadOnlyCollection<string> Acknowledged => [.. _acknowledged];
 
     [WorkflowRun]
-    public async Task<IReadOnlyCollection<string>> RunAsync(ulong stackInstanceId)
+    public async Task<IReadOnlyCollection<string>> StartPublishingWebshieldMappings(ulong stackInstanceId)
     {
         await Workflow.WaitConditionAsync(() => _pending.Count == 0 && Workflow.AllHandlersFinished);
         return [.. _acknowledged];
     }
 
     [WorkflowSignal]
-    public async Task PublishDesiredState(string transactionId)
+    public async Task PublishWebshieldMappings(string transactionId)
     {
         var waasContext = await Workflow.ExecuteActivityAsync(
             (WaasActivities<WebshieldData> act) => act.ReadWaasContext(transactionId, stackInstanceId, 0),
@@ -33,7 +33,7 @@ public class PublishWebshieldWorkflow(ulong stackInstanceId)
         );
 
         var nodes = await Workflow.ExecuteActivityAsync(
-            (WebshieldActivities act) => act.SendToBackend(waasContext),
+            (WebshieldActivities act) => act.SendToWebshieldNodes(waasContext),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(15) }
         );
 

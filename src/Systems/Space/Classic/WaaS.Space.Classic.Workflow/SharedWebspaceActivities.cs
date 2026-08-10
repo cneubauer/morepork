@@ -8,7 +8,7 @@ public class SharedWebspaceActivities(
 )
 {
     [Activity]
-    public async Task<WaasContext<SharedWebspaceData>> SendToBackend(WaasContext<SharedWebspaceData> waasContext)
+    public async Task<WaasContext<SharedWebspaceData>> SendToTechMw(WaasContext<SharedWebspaceData> waasContext)
     {
         var desiredState = await webspaceMiddlewareService.Publish(
             waasContext.Tenant.Name,
