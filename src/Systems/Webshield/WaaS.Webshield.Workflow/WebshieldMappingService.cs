@@ -5,7 +5,7 @@ using WaaS.Webshield.DesiredState;
 
 public class WebshieldMappingService(IDesiredStateStore<WebshieldData> webshieldDesiredStateStore) : IWebshieldMappingService
 {
-    public async Task SyncWebshieldMappings(
+    public async Task PatchWebshieldMappings(
         IStackInstance stackInstance,
         IEnumerable<WebshieldMapping> mappings
     )

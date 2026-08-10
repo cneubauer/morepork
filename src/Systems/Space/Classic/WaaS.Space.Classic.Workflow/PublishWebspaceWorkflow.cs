@@ -47,7 +47,7 @@ public class PublishWebspaceWorkflow(ulong stackInstanceId, ulong systemInstance
             .ToList();
 
         await Workflow.ExecuteActivityAsync(
-            (WebshieldActivities act) => act.SyncWebshieldMappings(
+            (WebshieldActivities act) => act.PatchWebshieldMappings(
                 waasContext.StackInstance,
                 mappings
             ),

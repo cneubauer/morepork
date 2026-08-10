@@ -33,12 +33,12 @@ public class WebshieldActivities(
     }
 
     [Activity]
-    public async Task SyncWebshieldMappings(
+    public async Task PatchWebshieldMappings(
         StackInstance stackInstance,
         List<WebshieldMapping> mappings
     )
     {
-        await webshieldMappingService.SyncWebshieldMappings(
+        await webshieldMappingService.PatchWebshieldMappings(
             stackInstance,
             mappings
         );

@@ -6,7 +6,7 @@ public record WebshieldMapping(string Domain, string Destination, bool IsEnabled
 
 public interface IWebshieldMappingService
 {
-    Task SyncWebshieldMappings(
+    Task PatchWebshieldMappings(
         IStackInstance stackInstance,
         IEnumerable<WebshieldMapping> mappings
     );
