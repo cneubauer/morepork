@@ -1,6 +1,6 @@
 using System.Buffers;
 
-namespace WaaS.Common.Changes;
+namespace WaaS.Common.Comparison;
 
 /// <summary>
 /// Carries the two path representations for one node side by side: a dotted path for humans and

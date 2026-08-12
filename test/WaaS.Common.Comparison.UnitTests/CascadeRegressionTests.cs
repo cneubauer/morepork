@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 
-namespace WaaS.Common.Changes.UnitTests;
+namespace WaaS.Common.Comparison.UnitTests;
 
 /// <summary>
 /// Guards the requirement this component was written for.
@@ -24,7 +24,7 @@ public class CascadeRegressionTests
         var current = Collection(Enumerable.Range(0, 50));
         var proposed = Collection(Enumerable.Range(-1, 51));
 
-        var changes = ChangeSet.Between(current, proposed, KeyedItems);
+        var changes = Changes.Between(current, proposed, KeyedItems);
 
         Assert.Equal("Items[Id=-1]", Assert.Single(changes.Keys));
         Assert.Equal(ChangeType.Added, changes["Items[Id=-1]"].ChangeType);
@@ -36,7 +36,7 @@ public class CascadeRegressionTests
         var current = Collection(Enumerable.Range(0, 50));
         var proposed = Collection(Enumerable.Range(1, 49));
 
-        var changes = ChangeSet.Between(current, proposed, KeyedItems);
+        var changes = Changes.Between(current, proposed, KeyedItems);
 
         Assert.Equal("Items[Id=0]", Assert.Single(changes.Keys));
         Assert.Equal(ChangeType.Removed, changes["Items[Id=0]"].ChangeType);
@@ -48,7 +48,7 @@ public class CascadeRegressionTests
         var current = Collection(Enumerable.Range(0, 50));
         var proposed = Collection(Enumerable.Range(0, 50).Reverse());
 
-        var changes = ChangeSet.Between(current, proposed, KeyedItems);
+        var changes = Changes.Between(current, proposed, KeyedItems);
 
         Assert.False(changes.HasChanges);
     }
@@ -62,7 +62,7 @@ public class CascadeRegressionTests
         proposed["Items"]!.AsArray()
             .First(x => x!["Id"]!.GetValue<int>() == 25)!["Value"] = "edited";
 
-        var changes = ChangeSet.Between(current, proposed, KeyedItems);
+        var changes = Changes.Between(current, proposed, KeyedItems);
 
         Assert.Equal(["Items[Id=-1]", "Items[Id=25].Value"], changes.Keys.Order());
     }

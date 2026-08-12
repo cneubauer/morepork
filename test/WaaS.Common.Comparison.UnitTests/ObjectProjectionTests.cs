@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace WaaS.Common.Changes.UnitTests;
+namespace WaaS.Common.Comparison.UnitTests;
 
 /// <summary>
 /// Covers the typed entry point: how the serializer contract determines which properties are visible,
@@ -57,7 +57,7 @@ public class ObjectProjectionTests
     public void Compare_IgnoredProperty_IsNotReported()
     {
         // Hiding a property from serialization is the supported way to keep a secret out of a change record.
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             new Secretive { Name = "same", PasswordHash = "before" },
             new Secretive { Name = "same", PasswordHash = "after" });
 
@@ -67,7 +67,7 @@ public class ObjectProjectionTests
     [Fact]
     public void Compare_RenamedProperty_UsesJsonName()
     {
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             new Renamed { WebAnalytics = "off" },
             new Renamed { WebAnalytics = "on" });
 
@@ -77,7 +77,7 @@ public class ObjectProjectionTests
     [Fact]
     public void Compare_Enum_RendersAsName()
     {
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             new Stateful { Status = Status.Active },
             new Stateful { Status = Status.Inactive });
 
@@ -90,7 +90,7 @@ public class ObjectProjectionTests
     {
         var moment = new DateTimeOffset(2026, 8, 11, 10, 30, 0, TimeSpan.Zero);
 
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             new Stateful { ChangedAt = moment },
             new Stateful { ChangedAt = moment });
 
@@ -111,7 +111,7 @@ public class ObjectProjectionTests
             ],
         };
 
-        var changes = ChangeSet.Between(current, proposed);
+        var changes = Changes.Between(current, proposed);
 
         Assert.Equal(
             ["Bindings[DomainName=a.com].IsEnabled", "Bindings[DomainName=z.com]"],
@@ -122,7 +122,7 @@ public class ObjectProjectionTests
     [Fact]
     public void Compare_ScalarCollectionOnPoco_ComparesAsMultiset()
     {
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             new Host { Tags = ["beta", "canary"] },
             new Host { Tags = ["canary", "beta"] });
 
@@ -133,7 +133,7 @@ public class ObjectProjectionTests
     public void Compare_RecursiveModel_DoesNotHangResolvingKeys()
     {
         // The type walk must terminate on a self-referencing model.
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             new Node { Name = "root", Children = [new() { Name = "child" }] },
             new Node { Name = "root", Children = [new() { Name = "changed" }] });
 
@@ -146,7 +146,7 @@ public class ObjectProjectionTests
         var current = new Host { Bindings = [new() { DomainName = "a", IsEnabled = true }] };
         var proposed = new Host { Bindings = [new() { DomainName = "b", IsEnabled = true }] };
 
-        var changes = ChangeSet.Between(current, proposed, ComparisonOptions.Default with
+        var changes = Changes.Between(current, proposed, ComparisonOptions.Default with
         {
             ArrayKeys = new Dictionary<string, string> { ["/Bindings"] = "IsEnabled" },
         });
@@ -158,7 +158,7 @@ public class ObjectProjectionTests
     [Fact]
     public void Compare_NullVersusInstance_ReportsModifiedAtRoot()
     {
-        var changes = ChangeSet.Between<Secretive?>(null, new Secretive { Name = "new" });
+        var changes = Changes.Between<Secretive?>(null, new Secretive { Name = "new" });
 
         Assert.Equal(ChangeType.Modified, changes[""].ChangeType);
     }

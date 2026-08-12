@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace WaaS.Common.Changes;
+namespace WaaS.Common.Comparison;
 
 /// <summary>
 /// Controls how <see cref="ChangeSet"/> projects and compares two states.

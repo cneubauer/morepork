@@ -1,4 +1,4 @@
-namespace WaaS.Common.Changes;
+namespace WaaS.Common.Comparison;
 
 /// <summary>
 /// A single change at one path.

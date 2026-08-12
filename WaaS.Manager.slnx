@@ -3,7 +3,7 @@
     <Project Path="src/WaaS.Persistence/WaaS.Persistence.csproj" />
   </Folder>
   <Folder Name="/src/Common/">
-    <Project Path="src/Common/WaaS.Common.Changes/WaaS.Common.Changes.csproj" />
+    <Project Path="src/Common/WaaS.Common.Comparison/WaaS.Common.Comparison.csproj" />
     <Project Path="src/Common/WaaS.Common.DesiredState/WaaS.Common.DesiredState.csproj" />
     <Project Path="src/Common/WaaS.Common.ViewModel/WaaS.Common.ViewModel.csproj" />
     <Project Path="src/Common/WaaS.Common.Workflow/WaaS.Common.Workflow.csproj" />
@@ -32,7 +32,7 @@
     <Project Path="src/Systems/Webshield/WaaS.Webshield.Worker/WaaS.Webshield.Worker.csproj" />
   </Folder>
   <Folder Name="/test/">
-    <Project Path="test/WaaS.Common.Changes.UnitTests/WaaS.Common.Changes.UnitTests.csproj" />
+    <Project Path="test/WaaS.Common.Comparison.UnitTests/WaaS.Common.Comparison.UnitTests.csproj" />
   </Folder>
   <Project Path="src/WaaS.WebApi/WaaS.WebApi.csproj" />
 </Solution>

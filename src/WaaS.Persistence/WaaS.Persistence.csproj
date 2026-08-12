@@ -22,4 +22,8 @@
     <PackageReference Include="Npgsql" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Common\WaaS.Common.Comparison\WaaS.Common.Comparison.csproj" />
+  </ItemGroup>
+
 </Project>

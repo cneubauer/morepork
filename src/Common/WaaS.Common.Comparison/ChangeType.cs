@@ -1,4 +1,4 @@
-namespace WaaS.Common.Changes;
+namespace WaaS.Common.Comparison;
 
 /// <summary>
 /// The kind of change recorded for a single path in a <see cref="ChangeSet"/>.

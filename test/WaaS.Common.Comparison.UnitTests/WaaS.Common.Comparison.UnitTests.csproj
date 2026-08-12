@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Common\WaaS.Common.Changes\WaaS.Common.Changes.csproj" />
+    <ProjectReference Include="..\..\src\Common\WaaS.Common.Comparison\WaaS.Common.Comparison.csproj" />
     <ProjectReference Include="..\..\src\Systems\Space\WaaS.Space.DesiredState\WaaS.Space.DesiredState.csproj" />
   </ItemGroup>
 

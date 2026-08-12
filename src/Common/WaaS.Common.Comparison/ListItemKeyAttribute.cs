@@ -1,4 +1,4 @@
-namespace WaaS.Common.Changes;
+namespace WaaS.Common.Comparison;
 
 /// <summary>
 /// Marks the property that identifies an item within its containing collection, so that

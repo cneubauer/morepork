@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace WaaS.Common.Changes.UnitTests;
+namespace WaaS.Common.Comparison.UnitTests;
 
 public class ChangeSetTests
 {
@@ -33,7 +33,7 @@ public class ChangeSetTests
         """"{"A":{"ChangeType":"Modified","Current":"x","New":"y","Pointer":"/A"}}"""")]                     // strings render unquoted
     public void Compare_Json_ProducesExpectedChangeSet(string current, string proposed, string expected)
     {
-        var changes = ChangeSet.Between(JsonNode.Parse(current), JsonNode.Parse(proposed));
+        var changes = Changes.Between(JsonNode.Parse(current), JsonNode.Parse(proposed));
 
         Assert.Equal(Canonical(expected), Canonical(changes.ToJson()));
     }
@@ -59,7 +59,7 @@ public class ChangeSetTests
         """"{"Domains[DomainName='a]b'].IsEnabled":{"ChangeType":"Modified","Current":"true","New":"false","Pointer":"/Domains/0/IsEnabled"}}"""")]  // a bracket is quoted
     public void Compare_KeyedCollection_MatchesByIdentity(string current, string proposed, string expected)
     {
-        var changes = ChangeSet.Between(JsonNode.Parse(current), JsonNode.Parse(proposed), KeyedDomains);
+        var changes = Changes.Between(JsonNode.Parse(current), JsonNode.Parse(proposed), KeyedDomains);
 
         Assert.Equal(Canonical(expected), Canonical(changes.ToJson()));
     }
@@ -75,7 +75,7 @@ public class ChangeSetTests
         """"{"Tags[value=a]":{"ChangeType":"Added","Current":null,"New":"a","Pointer":"/Tags/0"}}"""")]       // first entry
     public void Compare_ScalarCollection_ComparesAsMultiset(string current, string proposed, string expected)
     {
-        var changes = ChangeSet.Between(JsonNode.Parse(current), JsonNode.Parse(proposed));
+        var changes = Changes.Between(JsonNode.Parse(current), JsonNode.Parse(proposed));
 
         Assert.Equal(Canonical(expected), Canonical(changes.ToJson()));
     }
@@ -83,7 +83,7 @@ public class ChangeSetTests
     [Fact]
     public void Compare_NullVersusEmptyCollection_ReportsModified()
     {
-        var changes = ChangeSet.Between(JsonNode.Parse("""{"Tags":null}"""), JsonNode.Parse("""{"Tags":[]}"""));
+        var changes = Changes.Between(JsonNode.Parse("""{"Tags":null}"""), JsonNode.Parse("""{"Tags":[]}"""));
 
         Assert.Equal(ChangeType.Modified, changes["Tags"].ChangeType);
         Assert.Null(changes["Tags"].Current);
@@ -93,7 +93,7 @@ public class ChangeSetTests
     [Fact]
     public void Compare_BothNull_ReportsNoChanges()
     {
-        var changes = ChangeSet.Between((JsonNode?)null, null);
+        var changes = Changes.Between((JsonNode?)null, null);
 
         Assert.False(changes.HasChanges);
         Assert.Empty(changes);
@@ -104,7 +104,7 @@ public class ChangeSetTests
     {
         // Added and Removed describe a property or item appearing within a container. The root has no
         // container, so a root that becomes an object is a change of shape: Modified from null.
-        var changes = ChangeSet.Between(null, JsonNode.Parse("""{"A":1}"""));
+        var changes = Changes.Between(null, JsonNode.Parse("""{"A":1}"""));
 
         Assert.Equal(ChangeType.Modified, changes[""].ChangeType);
         Assert.Null(changes[""].Current);
@@ -115,7 +115,7 @@ public class ChangeSetTests
     [Fact]
     public void Compare_ScalarArraysAsSetsDisabled_ComparesPositionally()
     {
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             JsonNode.Parse("""{"Tags":["a","b"]}"""),
             JsonNode.Parse("""{"Tags":["b","a"]}"""),
             ComparisonOptions.Default with { ScalarArraysAsSets = false });
@@ -127,7 +127,7 @@ public class ChangeSetTests
     public void Compare_WithoutKey_FallsBackToIndexAndCascades()
     {
         // The behaviour keyed matching exists to avoid, asserted so the contrast stays visible.
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             JsonNode.Parse("""{"Domains":[{"DomainName":"a"},{"DomainName":"b"}]}"""),
             JsonNode.Parse("""{"Domains":[{"DomainName":"z"},{"DomainName":"a"},{"DomainName":"b"}]}"""));
 
@@ -138,7 +138,7 @@ public class ChangeSetTests
     [Fact]
     public void Compare_DuplicateKeyValues_FallsBackToIndex()
     {
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             JsonNode.Parse("""{"Domains":[{"DomainName":"a"},{"DomainName":"a"}]}"""),
             JsonNode.Parse("""{"Domains":[{"DomainName":"a"},{"DomainName":"b"}]}"""),
             KeyedDomains);
@@ -149,7 +149,7 @@ public class ChangeSetTests
     [Fact]
     public void Compare_KeyMissingOnOneItem_FallsBackToIndex()
     {
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             JsonNode.Parse("""{"Domains":[{"DomainName":"a"},{"State":"orphan"}]}"""),
             JsonNode.Parse("""{"Domains":[{"DomainName":"a"},{"State":"changed"}]}"""),
             KeyedDomains);
@@ -160,7 +160,7 @@ public class ChangeSetTests
     [Fact]
     public void Compare_ExpandAddedSubtrees_ReportsEachLeaf()
     {
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             JsonNode.Parse("{}"),
             JsonNode.Parse("""{"A":{"B":1,"C":{"D":2}}}"""),
             ComparisonOptions.Default with { ExpandAddedSubtrees = true });
@@ -172,7 +172,7 @@ public class ChangeSetTests
     [Fact]
     public void Compare_ExpandAddedSubtrees_EmptyContainerReportsItself()
     {
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             JsonNode.Parse("{}"),
             JsonNode.Parse("""{"A":{}}"""),
             ComparisonOptions.Default with { ExpandAddedSubtrees = true });
@@ -184,7 +184,7 @@ public class ChangeSetTests
     [Fact]
     public void Compare_PreservesDocumentOrder()
     {
-        var changes = ChangeSet.Between(
+        var changes = Changes.Between(
             JsonNode.Parse("""{"Z":1,"A":2,"M":3}"""),
             JsonNode.Parse("""{"Z":9,"A":9,"M":9}"""));
 

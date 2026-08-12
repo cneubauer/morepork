@@ -3,7 +3,7 @@ using WaaS.Space.DesiredState;
 // WaaS.Space is also a namespace prefix, so the type needs an unambiguous name here.
 using SpaceResource = WaaS.Space.DesiredState.Space;
 
-namespace WaaS.Common.Changes.UnitTests;
+namespace WaaS.Common.Comparison.UnitTests;
 
 /// <summary>
 /// End-to-end coverage against the real desired-state models, which is where the component will be used.
@@ -36,7 +36,7 @@ public class SpaceChangeTests
         proposed.Owner.Username = "web2";
         proposed.State = "active";
 
-        var changes = ChangeSet.Between(current, proposed, SpaceKeys);
+        var changes = Changes.Between(current, proposed, SpaceKeys);
 
         Assert.Equal(
             [
@@ -59,7 +59,7 @@ public class SpaceChangeTests
     [Fact]
     public void Compare_UnchangedSpace_ReportsNoChanges()
     {
-        var changes = ChangeSet.Between(NewSpace(), NewSpace(), SpaceKeys);
+        var changes = Changes.Between(NewSpace(), NewSpace(), SpaceKeys);
 
         Assert.False(changes.HasChanges);
     }
@@ -70,7 +70,7 @@ public class SpaceChangeTests
         // WaasResource seeds ReferenceId and CorrelationId with fresh GUIDs, so two independently
         // constructed instances differ. Real callers compare a stored state against a proposed one, where
         // these are carried over; this documents that the diff sees whatever the serializer sees.
-        var changes = ChangeSet.Between(new SpaceResource(), new SpaceResource(), SpaceKeys);
+        var changes = Changes.Between(new SpaceResource(), new SpaceResource(), SpaceKeys);
 
         Assert.Equal(["CorrelationId", "ReferenceId"], changes.Keys.Order());
     }
@@ -83,7 +83,7 @@ public class SpaceChangeTests
 
         proposed.CompatLinks.Add(new CompatLink());
 
-        var changes = ChangeSet.Between(current, proposed, SpaceKeys);
+        var changes = Changes.Between(current, proposed, SpaceKeys);
 
         Assert.Equal("CompatLinks[0]", Assert.Single(changes.Keys));
         Assert.Equal(ChangeType.Added, changes["CompatLinks[0]"].ChangeType);

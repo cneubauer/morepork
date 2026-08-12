@@ -1,4 +1,4 @@
-namespace WaaS.Common.Changes;
+namespace WaaS.Common.Comparison;
 
 /// <summary>
 /// The recursive comparison over two JSON trees. Operates purely on <see cref="JsonNode"/> — all type

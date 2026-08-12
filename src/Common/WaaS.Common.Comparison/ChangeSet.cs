@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Text.Encodings.Web;
 
-namespace WaaS.Common.Changes;
+namespace WaaS.Common.Comparison;
 
 /// <summary>
 /// The result of comparing two states: a flat map from path to <see cref="Change"/>, in document order.
@@ -13,7 +13,7 @@ namespace WaaS.Common.Changes;
 /// wherever a key is known, which is what makes a key usable for persisted change records: inserting an
 /// item at the head of a list does not change the paths of the items that follow it.
 /// </para>
-/// <para>Create one with <see cref="Between{T}(T, T, ComparisonOptions?)"/>.</para>
+/// <para>Create one with <see cref="Changes.Between{T}(T, T, ComparisonOptions?)"/>.</para>
 /// </remarks>
 public sealed class ChangeSet : IReadOnlyDictionary<string, Change>
 {
@@ -28,42 +28,6 @@ public sealed class ChangeSet : IReadOnlyDictionary<string, Change>
 
     /// <summary>An empty change set, meaning the two states are equivalent.</summary>
     public static ChangeSet Empty { get; } = new([], []);
-
-    /// <summary>
-    /// Compares two objects of the same type, resolving collection identity keys from
-    /// <see cref="ListItemKeyAttribute"/> on <typeparamref name="T"/> and the types it contains.
-    /// </summary>
-    /// <remarks>
-    /// Objects are projected to JSON before comparing, so the result describes the serialized form
-    /// rather than the object graph. A property hidden from serialization — with
-    /// <see cref="JsonIgnoreAttribute"/>, for instance — is therefore invisible here, which is a
-    /// convenient way to keep secrets out of a persisted change record. Object graphs containing cycles
-    /// cannot be projected and will throw.
-    /// </remarks>
-    public static ChangeSet Between<T>(T? current, T? proposed, ComparisonOptions? options = null)
-    {
-        var effective = options ?? ComparisonOptions.Default;
-
-        var currentNode = JsonSerializer.SerializeToNode(current, effective.Serializer);
-        var proposedNode = JsonSerializer.SerializeToNode(proposed, effective.Serializer);
-
-        return JsonComparer.Compare(
-            currentNode,
-            proposedNode,
-            effective,
-            ListItemKeyResolver.Resolve(typeof(T), effective));
-    }
-
-    /// <summary>
-    /// Compares two JSON documents. Collection identity keys come from
-    /// <see cref="ComparisonOptions.ArrayKeys"/> only, since there is no type to carry attributes.
-    /// </summary>
-    public static ChangeSet Between(JsonNode? current, JsonNode? proposed, ComparisonOptions? options = null)
-    {
-        var effective = options ?? ComparisonOptions.Default;
-
-        return JsonComparer.Compare(current, proposed, effective, effective.ArrayKeys);
-    }
 
     /// <summary>Whether any change was recorded.</summary>
     public bool HasChanges => changes.Count > 0;

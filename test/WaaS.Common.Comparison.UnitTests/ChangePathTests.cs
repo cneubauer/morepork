@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 
-namespace WaaS.Common.Changes.UnitTests;
+namespace WaaS.Common.Comparison.UnitTests;
 
 /// <summary>
 /// Covers the two properties the path forms must hold: a dotted path uniquely identifies a leaf, and a
@@ -19,7 +19,7 @@ public class ChangePathTests
         var current = new JsonObject { [name] = 1 };
         var proposed = new JsonObject { [name] = 2 };
 
-        var changes = ChangeSet.Between(current, proposed);
+        var changes = Changes.Between(current, proposed);
 
         Assert.Equal(expectedSegment, Assert.Single(changes.Keys));
     }
@@ -35,7 +35,7 @@ public class ChangePathTests
         var current = Keyed(keyValue, enabled: true);
         var proposed = Keyed(keyValue, enabled: false);
 
-        var changes = ChangeSet.Between(current, proposed, KeyedById);
+        var changes = Changes.Between(current, proposed, KeyedById);
 
         Assert.Equal($"Items[Id={expectedValue}].IsEnabled", Assert.Single(changes.Keys));
     }
@@ -49,7 +49,7 @@ public class ChangePathTests
         var current = new JsonObject { [name] = 1 };
         var proposed = new JsonObject { [name] = 2 };
 
-        var changes = ChangeSet.Between(current, proposed);
+        var changes = Changes.Between(current, proposed);
         var pointer = Assert.Single(changes.Values).Pointer;
 
         Assert.Equal("2", Resolve(proposed, pointer)?.ToJsonString());
@@ -71,7 +71,7 @@ public class ChangePathTests
             proposed[name] = 2;
         }
 
-        var changes = ChangeSet.Between(current, proposed);
+        var changes = Changes.Between(current, proposed);
 
         Assert.Equal(names.Length, changes.Count);
         Assert.Equal(names.Length, changes.Keys.Distinct().Count());

@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json.Serialization.Metadata;
 
-namespace WaaS.Common.Changes;
+namespace WaaS.Common.Comparison;
 
 /// <summary>
 /// Finds the identity key of every collection reachable from a type, so the comparison itself can run
