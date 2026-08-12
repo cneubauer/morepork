@@ -63,7 +63,7 @@ public class ClassicWebspaceController(
 
         desiredState.Data.Webspace.Apply(webspace);
 
-        desiredState = await desiredStateStore.Save(transaction, desiredState);
+        desiredState = (await desiredStateStore.Save(transaction, desiredState)).Current;
 
         await desiredStateStore.Schedule(transaction, transactionId, stackInstanceId, systemInstanceId);
 

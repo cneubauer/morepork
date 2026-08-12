@@ -17,11 +17,11 @@ public class SharedWebspaceActivities(
             waasContext.TransactionId
         );
 
-        await desiredStateStore.Save(desiredState, force: true);
+        var saveResult = await desiredStateStore.Save(desiredState, force: true);
 
         return waasContext with
         {
-            DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
+            DesiredState = (DesiredState<SharedWebspaceData>)saveResult.Current,
         };
     }
 }

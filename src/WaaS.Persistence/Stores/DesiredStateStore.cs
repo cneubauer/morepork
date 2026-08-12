@@ -34,38 +34,73 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         """;
 
     internal const string SaveSql = """
-        INSERT INTO desired_state (
-            stack_instance_id,
-            system_instance_id,
-            state_namespace,
-            state_zone,
-            state_version,
-            data,
-            tenant,
-            tombstoned,
-            created,
-            applied,
-            expired,
-            next_check
+        WITH previous AS (
+            SELECT
+                stack_instance_id,
+                system_instance_id,
+                state_namespace,
+                state_zone,
+                state_version,
+                data,
+                tenant,
+                tombstoned,
+                created,
+                applied,
+                expired
+            FROM desired_state
+            WHERE stack_instance_id = @StackInstanceId
+              AND system_instance_id = @SystemInstanceId
+              AND state_namespace = @Namespace
+              AND state_zone = @Zone
+            ORDER BY state_version DESC
+            LIMIT 1
+        ), saved AS (
+            INSERT INTO desired_state (
+                stack_instance_id,
+                system_instance_id,
+                state_namespace,
+                state_zone,
+                state_version,
+                data,
+                tenant,
+                tombstoned,
+                created,
+                applied,
+                expired,
+                next_check
+            )
+            VALUES (
+                @StackInstanceId,
+                @SystemInstanceId,
+                @Namespace,
+                @Zone,
+                @Version,
+                @Data::jsonb,
+                @Tenant,
+                @Tombstoned,
+                @Created,
+                @Applied,
+                @Expired,
+                @NextCheck
+            )
+            ON CONFLICT (stack_instance_id, system_instance_id, state_namespace, state_zone, state_version)
+                DO UPDATE
+                SET data = EXCLUDED.data
+            RETURNING
+                stack_instance_id,
+                system_instance_id,
+                state_namespace,
+                state_zone,
+                state_version,
+                data,
+                tenant,
+                tombstoned,
+                created,
+                applied,
+                expired
         )
-        VALUES (
-            @StackInstanceId,
-            @SystemInstanceId,
-            @Namespace,
-            @Zone,
-            @Version,
-            @Data::jsonb,
-            @Tenant,
-            @Tombstoned,
-            @Created,
-            @Applied,
-            @Expired,
-            @NextCheck
-        )
-        ON CONFLICT (stack_instance_id, system_instance_id, state_namespace, state_zone, state_version)
-            DO UPDATE
-            SET data = EXCLUDED.data
-        RETURNING
+        SELECT
+            0 AS Ordinal,
             stack_instance_id AS StackInstanceId,
             system_instance_id AS SystemInstanceId,
             state_namespace AS Namespace,
@@ -76,7 +111,26 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             tombstoned,
             created,
             applied,
-            expired;
+            expired
+        FROM saved
+        UNION ALL
+        SELECT
+            1 AS Ordinal,
+            stack_instance_id AS StackInstanceId,
+            system_instance_id AS SystemInstanceId,
+            state_namespace AS Namespace,
+            state_zone AS Zone,
+            state_version AS Version,
+            data,
+            tenant,
+            tombstoned,
+            created,
+            applied,
+            expired
+        FROM previous
+        -- UNION ALL does not guarantee order, and the two rows carry the same version on a force
+        -- save, so nothing in the data itself distinguishes them.
+        ORDER BY Ordinal;
         """;
 
     public async Task<NpgsqlTransaction> BeginTransaction()
@@ -199,7 +253,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IDesiredState<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, bool force = false)
+    public async Task<DesiredStateSaveResult<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, bool force = false)
     {
         using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -213,7 +267,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         return result;
     }
 
-    public async Task<IDesiredState<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, bool force = false)
+    public async Task<DesiredStateSaveResult<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, bool force = false)
     {
         var parameters = new
         {
@@ -231,7 +285,19 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             desiredState.NextCheck,
         };
 
-        return await transaction.Connection.QuerySingleAsync<DesiredState<TDesiredState>>(SaveSql, parameters, transaction);
+        // The saved row comes first, followed by the row it replaced — absent on a first save.
+        var rows = (await transaction.Connection.QueryAsync<DesiredState<TDesiredState>>(SaveSql, parameters, transaction))
+            .ToArray();
+
+        var current = rows[0];
+        var previousState = rows.Length > 1 ? rows[1] : null;
+
+        // Comparing a first save against a default instance rather than null reports each field that
+        // differs from the empty state, instead of one root-level change carrying the whole document.
+        var changes = (previousState is null ? new TDesiredState() : previousState.Data)
+            .Compare(current.Data);
+
+        return new DesiredStateSaveResult<TDesiredState>(current, previousState, changes);
     }
 
     public async Task Schedule(NpgsqlTransaction transaction, string transactionId, ulong stackInstanceId, ulong systemInstanceId)
