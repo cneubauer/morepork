@@ -81,7 +81,7 @@ public class ClassicWebspaceController(
         var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
         var startOperation = WithStartWorkflowOperation.Create(
-            (PublishClassicWebspaceWorkflow workflow) => workflow.RunAsync(stackInstanceId, systemInstanceId),
+            (PublishClassicWebspaceWorkflow workflow) => workflow.StartPublishingClassicWebspace(stackInstanceId, systemInstanceId),
             new WorkflowOptions
             {
                 Id = resourceId,

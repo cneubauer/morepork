@@ -36,7 +36,7 @@ builder.Services
         WorkflowDefinitions.ClientNamespace,
         WorkflowDefinitions.DefaultTaskQueue)
     .AddScopedActivities<WaasActivities<SharedWebspaceData>>()
-    .AddScopedActivities<SharedWebspaceActivities>()
+    .AddScopedActivities<ClassicWebspaceActivities>()
     .AddScopedActivities<WebshieldActivities>()
     .AddWorkflow<PublishClassicWebspaceWorkflow>();
 

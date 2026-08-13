@@ -2,7 +2,7 @@ using Temporalio.Activities;
 
 namespace WaaS.Space.Classic.Workflow;
 
-public class SharedWebspaceActivities(
+public class ClassicWebspaceActivities(
     IDesiredStateStore<SharedWebspaceData> desiredStateStore,
     ISpaceMiddlewareService<SharedWebspaceData, WebspaceMiddleware.Webspace> webspaceMiddlewareService
 )
@@ -23,5 +23,11 @@ public class SharedWebspaceActivities(
         {
             DesiredState = (DesiredState<SharedWebspaceData>)saveResult.Current,
         };
+    }
+
+    [Activity]
+    public async Task UpdateProductDns(WaasContext<SharedWebspaceData> waasContext)
+    {
+        
     }
 }

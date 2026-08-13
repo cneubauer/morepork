@@ -304,7 +304,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
     {
         var sql = """
             INSERT INTO outbox (transaction_id, stack_instance_id, system_instance_id, leased_until)
-            VALUES (@TransactionId, @StackInstanceId, @SystemInstanceId, now() + interval '2 seconds')
+            VALUES (@TransactionId, @StackInstanceId, @SystemInstanceId, now() + interval '1 minute')
             ON CONFLICT (transaction_id)
                 DO UPDATE SET leased_until = EXCLUDED.leased_until;
             """;

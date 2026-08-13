@@ -31,3 +31,21 @@ podman build -t some-app:latest .
 podman save localhost/some-app:latest -o some-app.tar
 
 kind load image-archive some-app.tar
+
+
+# Webspace Publish Workflow
+
+- Receive request from client with updated webspace data (ViewModel)
+- Read related DesiredState
+- Validate updated webspace data
+- Convert `password`s to `securePasswordToken`s
+- Apply ViewModel to DesiredState
+- Save updated DesiredState (with new version)
+- Send webspace DesiredState to Backend (TechMW)
+- Apply synchronous response data to DesiredState and force save (no new version)
+- Return updated DesiredState as ViewModel to client
+- Update Webshield DesiredState with updated mappings from updated webspace DesiredState (if necessary)
+  - Wait for completion for all Webshield nodes to sent ACK notification asynchronously
+- Update Product DNS with ManagedDomainBindings from updated webspace DesiredState synchronously (if necessary)
+- Wait for final ACK notification from TechMW to complete webspace update
+- Send final notification to client when all operations completed successfully

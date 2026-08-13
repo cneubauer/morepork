@@ -1,13 +1,13 @@
 namespace WaaS.Space.Classic.Workflow;
 
-using Temporalio.Api.Enums.V1;
 using Temporalio.Workflows;
-using WaaS.Webshield.Workflow;
 
 [Workflow]
 [method: WorkflowInit]
 public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemInstanceId)
 {
+    private bool _closed = false;
+
     private readonly HashSet<string> _pending = [];
     private readonly HashSet<string> _acknowledged = [];
 
@@ -18,9 +18,9 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     public IReadOnlyCollection<string> Acknowledged => [.. _acknowledged];
 
     [WorkflowRun]
-    public async Task<IReadOnlyCollection<string>> RunAsync(ulong stackInstanceId, ulong systemInstanceId)
+    public async Task<IReadOnlyCollection<string>> StartPublishingClassicWebspace(ulong stackInstanceId, ulong systemInstanceId)
     {
-        await Workflow.WaitConditionAsync(() => _pending.Count == 0 && Workflow.AllHandlersFinished);
+        await Workflow.WaitConditionAsync(() => _closed && Workflow.AllHandlersFinished);
         return [.. _acknowledged];
     }
 
@@ -35,33 +35,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
         );
 
         waasContext = await Workflow.ExecuteActivityAsync(
-            (SharedWebspaceActivities act) => act.SendToTechMw(waasContext),
+            (ClassicWebspaceActivities act) => act.SendToTechMw(waasContext),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(15) }
-        );
-
-        var hostname = waasContext.DesiredState.Data.Webspace.Hostname ?? string.Empty;
-
-        var mappings = (waasContext.DesiredState.Data.Webspace.Domains ?? [])
-            .Concat(waasContext.DesiredState.Data.Webspace.HttpAccessDomains ?? [])
-            .Where(d => !string.IsNullOrWhiteSpace(d.DomainName))
-            .Select(d => new WebshieldMapping(d.DomainName, hostname, d.IsEnabled ?? true))
-            .ToList();
-
-        await Workflow.ExecuteActivityAsync(
-            (WebshieldActivities act) => act.PatchWebshieldMappings(
-                waasContext.StackInstance,
-                mappings
-            ),
-            new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
-        );
-
-        await Workflow.SignalWithStartWorkflowAsync(
-            (PublishWebshieldWorkflow wf) => wf.StartPublishingWebshieldMappings(stackInstanceId),
-            wf => wf.PublishWebshieldMappings(transactionId),
-            new SignalWithStartWorkflowOptions($"webshield-{stackInstanceId}", WorkflowDefinitions.DefaultTaskQueue)
-            {
-                IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
-            }
         );
 
         return waasContext;
@@ -77,5 +52,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             (WaasActivities<SharedWebspaceData> act) => act.SendNotification(transactionId),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
         );
+
+        if (_pending.Count == 0)
+            _closed = true;
     }
 }
