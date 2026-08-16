@@ -29,16 +29,17 @@ builder.Services
             ?? throw new InvalidOperationException("Missing WebspaceMiddleware:BaseUrl"))
     );
 
-
 builder.Services
     .AddHostedTemporalWorker(
         builder.Configuration["Temporal:TargetHost"]!,
         WorkflowDefinitions.ClientNamespace,
         WorkflowDefinitions.DefaultTaskQueue)
     .AddScopedActivities<WaasActivities<SharedWebspaceData>>()
+    .AddScopedActivities<WaasActivities<WebshieldData>>()
     .AddScopedActivities<ClassicWebspaceActivities>()
     .AddScopedActivities<WebshieldActivities>()
-    .AddWorkflow<PublishClassicWebspaceWorkflow>();
+    .AddWorkflow<PublishClassicWebspaceWorkflow>()
+    .AddWorkflow<PublishWebshieldWorkflow>();
 
 builder.Services.AddHealthChecks()
     .AddWaasDatabaseCheck(waasConnectionString);

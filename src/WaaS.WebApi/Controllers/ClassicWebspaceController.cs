@@ -1,5 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Temporalio.Api.Enums.V1;
+using Temporalio.Client;
+using WaaS.Common.Workflow;
+using WaaS.Persistence;
+using WaaS.Space.Classic.DesiredState;
+using WaaS.Space.Classic.Workflow;
 
 namespace WaaS.WebApi;
 
@@ -9,14 +14,15 @@ public class ClassicWebspaceController(
     ITemporalClient temporalClient,
     ITenantStore tenantStore,
     IStackInstanceStore stackInstanceStore,
-    IDesiredStateStore<SharedWebspaceData> desiredStateStore
+    IDesiredStateStore<SharedWebspaceData> desiredStateStore,
+    ILogger<ClassicWebspaceController> logger
 ) : ControllerBase
 {
     /// <summary>
     /// Update Classic Webspace
     /// </summary>
     /// <remarks>
-    /// Updates the desired state of a classic webspace. This operation is asynchronous and may take some time to complete. The response will indicate whether the update was accepted, completed successfully, or if there were validation errors.
+    /// Updates the desired state of a classic webspace. This operation executes TechMW synchronously and returns the updated desired state, then continues asynchronous reconciliation (Webshield, DNS, ACKs) in the background.
     /// </remarks>
     /// <param name="tenant" example="demo">The tenant identifier.</param>
     /// <param name="stackInstanceId" example="1234567">The stack instance identifier.</param>
@@ -57,7 +63,6 @@ public class ClassicWebspaceController(
         #region Update Desired State
 
         await using var transaction = await desiredStateStore.BeginTransaction();
-        await using var connection = transaction.Connection;
 
         await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
 
@@ -89,12 +94,15 @@ public class ClassicWebspaceController(
                 IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
             });
 
-        var result = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(transactionId),
-            new WorkflowUpdateWithStartOptions(startOperation)
-            {
-                Rpc = new RpcOptions { CancellationToken = HttpContext.RequestAborted },
-            });
+        try
+        {
+            var resultContext = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
+                (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(waasContext),
+                new WorkflowUpdateWithStartOptions(startOperation)
+                {
+                    Rpc = new() { CancellationToken = HttpContext.RequestAborted },
+                }
+            );
 
         await desiredStateStore.Dispatched(transactionId);
 

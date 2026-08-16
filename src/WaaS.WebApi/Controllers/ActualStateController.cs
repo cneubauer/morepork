@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Temporalio.Client;
+using WaaS.Space.Classic.Workflow;
 
 namespace WaaS.WebApi;
 
 [ApiController]
 [Route("api/actual-state")]
-public class ActualStateController(ITemporalClient temporalClient) : ControllerBase
+public class ActualStateController(ITemporalClient temporalClient, ILogger<ActualStateController> logger) : ControllerBase
 {
     /// <summary>
     /// Receive Actual State
@@ -20,11 +22,22 @@ public class ActualStateController(ITemporalClient temporalClient) : ControllerB
         [FromRoute] string transactionId
     )
     {
-        var workflowHandle = temporalClient.GetWorkflowHandle<PublishClassicWebspaceWorkflow>(resourceId);
-
-        await workflowHandle.SignalAsync(
-            workflow => workflow.ReceiveBackendNotification(transactionId)
-        );
+        try
+        {
+            var workflowHandle = temporalClient.GetWorkflowHandle<PublishClassicWebspaceWorkflow>(resourceId);
+            await workflowHandle.SignalAsync(
+                workflow => workflow.ReceiveBackendNotification(transactionId)
+            );
+        }
+        catch (Exception ex)
+        {
+            var fallbackId = $"{resourceId}-{transactionId}";
+            logger.LogWarning(ex, "Could not signal workflow with resourceId {ResourceId}, trying fallback {FallbackId}", resourceId, fallbackId);
+            var workflowHandle = temporalClient.GetWorkflowHandle<PublishClassicWebspaceWorkflow>(fallbackId);
+            await workflowHandle.SignalAsync(
+                workflow => workflow.ReceiveBackendNotification(transactionId)
+            );
+        }
 
         return Ok();
     }

@@ -1,10 +1,24 @@
 using Dapper;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 using Temporalio.Api.Enums.V1;
+using Temporalio.Client;
+using WaaS.Common.Workflow;
+using WaaS.Persistence;
+using WaaS.Space.Classic.DesiredState;
+using WaaS.Space.Classic.Workflow;
 
 namespace WaaS.WebApi;
 
-public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration configuration, ILogger<WorkflowExecutor> logger) : BackgroundService
+public class WorkflowExecutor(
+    ITemporalClient temporalClient,
+    IServiceScopeFactory scopeFactory,
+    IConfiguration configuration,
+    ILogger<WorkflowExecutor> logger
+) : BackgroundService
 {
     private static readonly TimeSpan _sweepInterval = TimeSpan.FromSeconds(1);
 
@@ -47,7 +61,18 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
         await connection.OpenAsync(stoppingToken);
         await using var transaction = await connection.BeginTransactionAsync(stoppingToken);
 
-        var entries = await connection.QueryAsync<OutboxEntry>(ClaimSql, transaction: transaction);
+        var entries = (await connection.QueryAsync<OutboxEntry>(ClaimSql, transaction: transaction)).ToList();
+
+        if (entries.Count == 0)
+        {
+            await transaction.CommitAsync(stoppingToken);
+            return;
+        }
+
+        using var scope = scopeFactory.CreateScope();
+        var stackInstanceStore = scope.ServiceProvider.GetRequiredService<IStackInstanceStore>();
+        var tenantStore = scope.ServiceProvider.GetRequiredService<ITenantStore>();
+        var desiredStateStore = scope.ServiceProvider.GetRequiredService<IDesiredStateStore<SharedWebspaceData>>();
 
         foreach (var entry in entries)
         {
@@ -60,10 +85,37 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
             var stackInstanceId = (ulong)entry.StackInstanceId;
             var systemInstanceId = (ulong)entry.SystemInstanceId;
 
+            var stackInstance = await stackInstanceStore.Read(stackInstanceId);
+            if (stackInstance is null)
+            {
+                logger.LogWarning("Stack instance {StackInstanceId} not found during outbox sweep", stackInstanceId);
+                continue;
+            }
+
+            var tenant = await tenantStore.Read(stackInstance.TenantId);
+            if (tenant is null)
+            {
+                logger.LogWarning("Tenant {TenantId} not found during outbox sweep", stackInstance.TenantId);
+                continue;
+            }
+
+            var desiredState = await desiredStateStore.Read(stackInstanceId, systemInstanceId);
+            if (desiredState is null)
+            {
+                logger.LogWarning("Desired state not found for stack {StackInstanceId}, system {SystemInstanceId} during outbox sweep", stackInstanceId, systemInstanceId);
+                continue;
+            }
+
+            var waasContext = new WaasContext<SharedWebspaceData>
+            {
+                TransactionId = entry.TransactionId,
+                Tenant = tenant,
+                StackInstance = (StackInstance)stackInstance,
+                DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
+            };
+
             var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
-            // Must be update-with-start, not a plain start: a reconciler created with an empty
-            // pending set would publish nothing and idle out.
             var startOperation = WithStartWorkflowOperation.Create(
                 (PublishClassicWebspaceWorkflow workflow) => workflow.PublishClassicWebspace(stackInstanceId, systemInstanceId),
                 new WorkflowOptions
@@ -73,10 +125,20 @@ public class WorkflowExecutor(ITemporalClient temporalClient, IConfiguration con
                     IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
                 });
 
-            await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-                (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(entry.TransactionId),
-                new WorkflowUpdateWithStartOptions(startOperation)
-            );
+            try
+            {
+                await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
+                    (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(waasContext),
+                    new WorkflowUpdateWithStartOptions(startOperation)
+                    {
+                        Rpc = new() { CancellationToken = stoppingToken },
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to dispatch recovered workflow update for transaction {TransactionId}", entry.TransactionId);
+            }
         }
 
         await transaction.CommitAsync(stoppingToken);

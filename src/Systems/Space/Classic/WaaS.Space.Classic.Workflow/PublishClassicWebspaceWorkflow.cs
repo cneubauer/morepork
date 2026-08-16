@@ -2,12 +2,19 @@ namespace WaaS.Space.Classic.Workflow;
 
 using System.Collections.Concurrent;
 using Temporalio.Workflows;
+using WaaS.Common.Workflow;
+using WaaS.Space.Classic.DesiredState;
+using WaaS.Webshield.DesiredState;
+using WaaS.Webshield.Workflow;
 
 [Workflow]
 [method:WorkflowInit]
 public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemInstanceId)
 {
-    private bool _closed = false;
+    private bool _isTechMwPublishing = false;
+    private readonly Queue<WaasContext<SharedWebspaceData>> _pendingUpdates = new();
+    private readonly List<string> _inFlightTransactionOrder = [];
+    private readonly HashSet<string> _acknowledgedTransactions = [];
 
     private readonly HashSet<string> _pending = [];
     private readonly HashSet<string> _acknowledged = [];
@@ -15,10 +22,10 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     private readonly ConcurrentQueue<WaasContext<SharedWebspaceData>> _queue = [];
 
     [WorkflowQuery]
-    public IReadOnlyCollection<string> Pending => [.. _pending];
+    public IReadOnlyCollection<string> InFlightTransactions => [.. _inFlightTransactionOrder];
 
     [WorkflowQuery]
-    public IReadOnlyCollection<string> Acknowledged => [.. _acknowledged];
+    public IReadOnlyCollection<string> AcknowledgedTransactions => [.. _acknowledgedTransactions];
 
     [WorkflowRun]
     public async Task<IReadOnlyCollection<string>> PublishClassicWebspace(ulong stackInstanceId, ulong systemInstanceId)
@@ -69,7 +76,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     }
 
     [WorkflowUpdate]
-    public async Task<WaasContext<SharedWebspaceData>> PublishDesiredState(string transactionId)
+    public async Task<WaasContext<SharedWebspaceData>> PublishDesiredState(WaasContext<SharedWebspaceData> context)
     {
         _closed = false;
 

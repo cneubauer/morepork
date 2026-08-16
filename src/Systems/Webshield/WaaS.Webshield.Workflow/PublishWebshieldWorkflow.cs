@@ -5,60 +5,55 @@ using WaaS.Common.Workflow;
 using WaaS.Webshield.DesiredState;
 
 [Workflow]
-[method: WorkflowInit]
-public class PublishWebshieldWorkflow(ulong stackInstanceId)
+public class PublishWebshieldWorkflow
 {
-    private readonly Dictionary<string, HashSet<string>> _pending = [];
-    private readonly HashSet<string> _acknowledged = [];
+    private readonly HashSet<string> _pendingNodes = [];
+    private readonly HashSet<string> _acknowledgedNodes = [];
 
     [WorkflowQuery]
-    public IReadOnlyDictionary<string, HashSet<string>> Pending => _pending;
+    public IReadOnlyCollection<string> PendingNodes => [.. _pendingNodes];
 
     [WorkflowQuery]
-    public IReadOnlyCollection<string> Acknowledged => [.. _acknowledged];
+    public IReadOnlyCollection<string> AcknowledgedNodes => [.. _acknowledgedNodes];
 
     [WorkflowRun]
-    public async Task<IReadOnlyCollection<string>> StartPublishingWebshieldMappings(ulong stackInstanceId)
+    public async Task StartPublishingWebshieldMappings(WaasContext<WebshieldData> context)
     {
-        await Workflow.WaitConditionAsync(() => _pending.Count == 0 && Workflow.AllHandlersFinished);
-        return [.. _acknowledged];
-    }
+        var nodes = await Workflow.ExecuteActivityAsync(
+            (WebshieldActivities act) => act.SendToWebshieldNodes(context),
+            new()
+            {
+                StartToCloseTimeout = TimeSpan.FromSeconds(15),
+                RetryPolicy = new() { MaximumAttempts = 3 }
+            }
+        );
 
-    [WorkflowSignal]
-    public async Task PublishWebshieldMappings(string transactionId)
-    {
-        var waasContext = await Workflow.ExecuteActivityAsync(
-            (WaasActivities<WebshieldData> act) => act.ReadWaasContext(transactionId, stackInstanceId, 0),
+        foreach (var node in nodes)
+        {
+            _pendingNodes.Add(node);
+        }
+
+        if (_pendingNodes.Count > 0)
+        {
+            await Workflow.WaitConditionAsync(
+                () => _pendingNodes.Count == 0,
+                TimeSpan.FromSeconds(60)
+            );
+        }
+
+        await Workflow.ExecuteActivityAsync(
+            (WaasActivities<WebshieldData> act) => act.SendNotification(context.TransactionId),
             new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
         );
-
-        var nodes = await Workflow.ExecuteActivityAsync(
-            (WebshieldActivities act) => act.SendToWebshieldNodes(waasContext),
-            new() { StartToCloseTimeout = TimeSpan.FromSeconds(15) }
-        );
-
-        _pending.Add(transactionId, [.. nodes]);
     }
 
     [WorkflowSignal]
     public async Task ReceiveBackendNotification(string transactionId, string node)
     {
-        var pendingNodes = _pending.GetValueOrDefault(transactionId);
-
-        if (pendingNodes is null)
-            return;
-
-        pendingNodes.Remove(node);
-
-        if (pendingNodes.Count > 0)
-            return;
-
-        _acknowledged.Add(transactionId);
-        _pending.Remove(transactionId);
-
-        await Workflow.ExecuteActivityAsync(
-            (WaasActivities<WebshieldData> act) => act.SendNotification(transactionId),
-            new() { StartToCloseTimeout = TimeSpan.FromSeconds(10) }
-        );
+        if (_pendingNodes.Remove(node))
+        {
+            _acknowledgedNodes.Add(node);
+        }
+        await Task.CompletedTask;
     }
 }

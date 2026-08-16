@@ -1,10 +1,15 @@
+using Microsoft.Extensions.Logging;
 using Temporalio.Activities;
+using WaaS.Webshield.DesiredState;
+using WaaS.Webshield.Workflow;
 
 namespace WaaS.Space.Classic.Workflow;
 
 public class ClassicWebspaceActivities(
     IDesiredStateStore<SharedWebspaceData> desiredStateStore,
-    ISpaceMiddlewareService<SharedWebspaceData, WebspaceMiddleware.Webspace> webspaceMiddlewareService
+    IWebshieldMappingService webshieldMappingService,
+    ISpaceMiddlewareService<SharedWebspaceData, WebspaceMiddleware.Webspace> webspaceMiddlewareService,
+    ILogger<ClassicWebspaceActivities> logger
 )
 {
     [Activity]
@@ -34,6 +39,7 @@ public class ClassicWebspaceActivities(
     [Activity]
     public async Task UpdateProductDns(WaasContext<SharedWebspaceData> waasContext)
     {
-        
+        logger.LogInformation("Updating Product DNS for stack instance {StackInstanceId}", waasContext.StackInstance.Id);
+        await Task.CompletedTask;
     }
 }
