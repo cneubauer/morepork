@@ -22,9 +22,3 @@ CREATE TABLE system_instance (
     created TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc')
 );
 ALTER SEQUENCE system_instance_id_seq RESTART WITH 5000000000;
-
-CREATE TABLE ssl_proxy (
-    hostname VARCHAR(255) NOT NULL UNIQUE,
-    active BOOLEAN NOT NULL DEFAULT TRUE,
-    zone SMALLINT NOT NULL
-);

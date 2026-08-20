@@ -70,6 +70,11 @@ public interface IDesiredState
     /// </summary>
     DateTime? NextCheck { get; }
 
+    /// <summary>
+    /// The ID of the transaction that last modified this desired state.
+    /// </summary>
+    string TransactionId { get; }
+
     void Tombstone();
 }
 

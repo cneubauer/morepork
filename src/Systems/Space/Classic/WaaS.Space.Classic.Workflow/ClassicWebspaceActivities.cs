@@ -17,12 +17,18 @@ public class ClassicWebspaceActivities(
             waasContext.TransactionId
         );
 
-        var saveResult = await desiredStateStore.Save(desiredState, force: true);
+        var saveResult = await desiredStateStore.Save(desiredState, desiredState.TransactionId, force: true);
 
         return waasContext with
         {
             DesiredState = (DesiredState<SharedWebspaceData>)saveResult.Current,
         };
+    }
+
+    [Activity]
+    public async Task MarkAsApplied(WaasContext<SharedWebspaceData> waasContext)
+    {
+        await desiredStateStore.MarkAsApplied(waasContext.TransactionId);
     }
 
     [Activity]

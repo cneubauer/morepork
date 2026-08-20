@@ -13,6 +13,7 @@ public class DesiredState<T> : IDesiredState<T> where T : IDesiredStateData, new
     public required ulong StackInstanceId { get; init; }
     public required short Tenant { get; init; }
     public required short Zone { get; init; }
+    public required string TransactionId { get; init; }
 
     #endregion
 

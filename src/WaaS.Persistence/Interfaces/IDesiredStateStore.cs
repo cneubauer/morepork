@@ -14,14 +14,15 @@ public interface IDesiredStateStore<TDesiredState>
     /// re-entrant within a transaction and released on commit or rollback.
     /// </remarks>
     Task Lock(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId);
-    Task<IDesiredState<TDesiredState>> Create(NpgsqlTransaction transaction, IStackInstance stackInstance);
+    Task<IDesiredState<TDesiredState>> Create(NpgsqlTransaction transaction, IStackInstance stackInstance, string transactionId);
     Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
     Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
-    Task<DesiredStateSaveResult<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, bool force = false);
-    Task<DesiredStateSaveResult<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, bool force = false);
+    Task<DesiredStateSaveResult<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false);
+    Task<DesiredStateSaveResult<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false);
+    Task MarkAsApplied(string transactionId);
 
     Task Schedule(NpgsqlTransaction transaction, string transactionId, ulong stackInstanceId, ulong systemInstanceId);
-    Task Dispatched(NpgsqlTransaction transaction, string transactionId);
+    Task Dispatched(string transactionId);
     
     Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
     Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);

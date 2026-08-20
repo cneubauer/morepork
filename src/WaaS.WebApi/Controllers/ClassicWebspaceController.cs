@@ -47,7 +47,12 @@ public class ClassicWebspaceController(
         if (stackInstance is null || stackInstance.TenantId != tenantEntity.Id)
             return NotFound();
 
+        // TODO: Add unique domain validation
+        // TODO: Add Desired State consistency validation
+
         #endregion
+
+        // TODO: Add credential convertion
 
         #region Update Desired State
 
@@ -63,7 +68,7 @@ public class ClassicWebspaceController(
 
         desiredState.Data.Webspace.Apply(webspace);
 
-        desiredState = (await desiredStateStore.Save(transaction, desiredState)).Current;
+        desiredState = (await desiredStateStore.Save(transaction, desiredState, transactionId)).Current;
 
         await desiredStateStore.Schedule(transaction, transactionId, stackInstanceId, systemInstanceId);
 
@@ -73,15 +78,10 @@ public class ClassicWebspaceController(
 
         #region Dispath Workflow
 
-        await using var dispatchTransaction = await desiredStateStore.BeginTransaction();
-        await using var dispatchConnection = dispatchTransaction.Connection;
-
-        await desiredStateStore.Dispatched(dispatchTransaction, transactionId);
-
         var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
         var startOperation = WithStartWorkflowOperation.Create(
-            (PublishClassicWebspaceWorkflow workflow) => workflow.StartPublishingClassicWebspace(stackInstanceId, systemInstanceId),
+            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishClassicWebspace(stackInstanceId, systemInstanceId),
             new WorkflowOptions
             {
                 Id = resourceId,
@@ -96,7 +96,7 @@ public class ClassicWebspaceController(
                 Rpc = new RpcOptions { CancellationToken = HttpContext.RequestAborted },
             });
 
-        await dispatchTransaction.CommitAsync();
+        await desiredStateStore.Dispatched(transactionId);
 
         #endregion
 
@@ -106,7 +106,9 @@ public class ClassicWebspaceController(
         if (result.ValidationErrors.Count > 0)
             return BadRequest(new { Errors = result.ValidationErrors });
 
-        return Ok(result.DesiredState!.Data.Space.ToViewModel(result.DesiredState.SystemInstanceId!.Value));
+        Response.Headers.Append("Transaction-Id", transactionId);
+
+        return Accepted(result.DesiredState!.Data.Space.ToViewModel(result.DesiredState.SystemInstanceId!.Value));
     }
 
     /// <summary>

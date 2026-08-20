@@ -1,0 +1,5 @@
+CREATE TABLE ssl_proxy (
+    hostname VARCHAR(255) NOT NULL UNIQUE,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    zone SMALLINT NOT NULL
+);

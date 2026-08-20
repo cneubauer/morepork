@@ -22,7 +22,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             tombstoned,
             created,
             applied,
-            expired
+            expired,
+            transaction_id AS TransactionId
         FROM desired_state
         WHERE (@Tenant IS NULL OR tenant = @Tenant)
           AND stack_instance_id = @StackInstanceId
@@ -46,7 +47,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
                 tombstoned,
                 created,
                 applied,
-                expired
+                expired,
+                transaction_id
             FROM desired_state
             WHERE stack_instance_id = @StackInstanceId
               AND system_instance_id = @SystemInstanceId
@@ -67,7 +69,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
                 created,
                 applied,
                 expired,
-                next_check
+                next_check,
+                transaction_id
             )
             VALUES (
                 @StackInstanceId,
@@ -81,7 +84,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
                 @Created,
                 @Applied,
                 @Expired,
-                @NextCheck
+                @NextCheck,
+                @TransactionId
             )
             ON CONFLICT (stack_instance_id, system_instance_id, state_namespace, state_zone, state_version)
                 DO UPDATE
@@ -97,7 +101,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
                 tombstoned,
                 created,
                 applied,
-                expired
+                expired,
+                transaction_id
         )
         SELECT
             0 AS Ordinal,
@@ -111,7 +116,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             tombstoned,
             created,
             applied,
-            expired
+            expired,
+            transaction_id AS TransactionId
         FROM saved
         UNION ALL
         SELECT
@@ -126,7 +132,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             tombstoned,
             created,
             applied,
-            expired
+            expired,
+            transaction_id AS TransactionId
         FROM previous
         -- UNION ALL does not guarantee order, and the two rows carry the same version on a force
         -- save, so nothing in the data itself distinguishes them.
@@ -153,7 +160,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         );
     }
 
-    public async Task<IDesiredState<TDesiredState>> Create(NpgsqlTransaction transaction, IStackInstance stackInstance)
+    public async Task<IDesiredState<TDesiredState>> Create(NpgsqlTransaction transaction, IStackInstance stackInstance, string transactionId)
     {
         const string sql = """
             WITH new_system AS (
@@ -180,7 +187,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
                 tombstoned,
                 created,
                 applied,
-                expired;
+                expired,
+                transaction_id AS TransactionId
             """;
 
         var initial = new DesiredState<TDesiredState>
@@ -188,6 +196,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             StackInstanceId = stackInstance.Id,
             Tenant = stackInstance.TenantId,
             Zone = stackInstance.Zone,
+            TransactionId = transactionId,
         };
 
         var desiredState = await transaction.Connection.QuerySingleAsync<DesiredState<TDesiredState>>(sql, new
@@ -199,10 +208,12 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             initial.Tenant,
             initial.Created,
             initial.NextCheck,
+            initial.TransactionId
         }, transaction);
 
         return desiredState;
     }
+
     public async Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         await using var connection = new NpgsqlConnection(connectionString);
@@ -216,6 +227,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             Version = (long?)version,
         });
     }
+
     public async Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         await using var connection = new NpgsqlConnection(connectionString);
@@ -253,21 +265,21 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<DesiredStateSaveResult<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, bool force = false)
+    public async Task<DesiredStateSaveResult<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false)
     {
         using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
 
         await using var transaction = await connection.BeginTransactionAsync();
 
-        var result = await Save(transaction, desiredState, force);
+        var result = await Save(transaction, desiredState, transactionId, force);
 
         await transaction.CommitAsync();
 
         return result;
     }
 
-    public async Task<DesiredStateSaveResult<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, bool force = false)
+    public async Task<DesiredStateSaveResult<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false)
     {
         var parameters = new
         {
@@ -283,6 +295,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             desiredState.Applied,
             desiredState.Expired,
             desiredState.NextCheck,
+            transactionId
         };
 
         // The saved row comes first, followed by the row it replaced — absent on a first save.
@@ -298,6 +311,17 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             .Compare(current.Data);
 
         return new DesiredStateSaveResult<TDesiredState>(current, previousState, changes);
+    }
+
+    public async Task MarkAsApplied(string transactionId)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await connection.ExecuteAsync(
+            "UPDATE desired_state SET applied = now() WHERE transaction_id = @TransactionId;",
+            new { TransactionId = transactionId }
+        );
     }
 
     public async Task Schedule(NpgsqlTransaction transaction, string transactionId, ulong stackInstanceId, ulong systemInstanceId)
@@ -317,12 +341,14 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         }, transaction);
     }
 
-    public async Task Dispatched(NpgsqlTransaction transaction, string transactionId)
+    public async Task Dispatched(string transactionId)
     {
-        await transaction.Connection.ExecuteAsync(
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await connection.ExecuteAsync(
             "DELETE FROM outbox WHERE transaction_id = @TransactionId;",
-            new { TransactionId = transactionId },
-            transaction);
+            new { TransactionId = transactionId });
     }
 
     private const string ListSql = """

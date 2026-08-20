@@ -6,8 +6,8 @@ using Temporalio.Workflows;
 public class PatchWebshieldMappingsWorkflow
 {
 
-    [WorkflowUpdate]
-    public async Task StartPatchingWebshield(WaasContext<SharedWebspaceData> context)
+    [WorkflowRun]
+    public async Task PatchWebshieldMappings(WaasContext<SharedWebspaceData> context)
     {
         
     }
