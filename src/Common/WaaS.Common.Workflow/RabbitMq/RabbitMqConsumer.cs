@@ -24,6 +24,8 @@ public class RabbitMqConsumer(IOptions<RabbitMqOptions> options, ILogger<RabbitM
         await using var connection = await factory.CreateConnectionAsync(cancellationToken);
         await using var channel = await connection.CreateChannelAsync(new CreateChannelOptions(publisherConfirmationsEnabled: false, publisherConfirmationTrackingEnabled: false), cancellationToken);
 
+        await channel.ExchangeDeclareAsync(_options.Exchange, ExchangeType.Topic, durable: true, autoDelete: false, cancellationToken: cancellationToken);
+
         await channel.QueueDeclareAsync(_options.Queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
 
         foreach (var routingKey in _options.RoutingKeys)

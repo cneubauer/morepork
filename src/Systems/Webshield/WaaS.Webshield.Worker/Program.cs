@@ -28,6 +28,7 @@ builder.Services
     )
     .AddScoped<IWebshieldMappingService, WebshieldMappingService>()
     .AddSingleton<IRabbitMqConsumer, RabbitMqConsumer>()
+    .AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>()
     .AddHostedService<WebshieldActualStateListener>()
     .AddTemporalClient(options =>
     {
