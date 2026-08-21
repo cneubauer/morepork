@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Temporalio.Client;
 
 namespace WaaS.Webshield.Workflow;

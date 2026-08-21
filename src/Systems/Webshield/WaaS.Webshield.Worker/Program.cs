@@ -13,8 +13,9 @@ builder.Configuration.AddKeyPerFile("/run/secrets", optional: true);
 var waasConnectionString = builder.Configuration.GetConnectionString("WaaS")
     ?? throw new InvalidOperationException("Missing connection string for WaaS");
 
-var rabbitMqConnectionString = builder.Configuration.GetConnectionString("RabbitMq")
-    ?? throw new InvalidOperationException("Missing connection string for RabbitMq");
+builder.Services
+    .Configure<RabbitMqOptions>(builder.Configuration
+    .GetSection("RabbitMq"));
 
 builder.Services
     .AddScoped<IStackInstanceStore>(
@@ -26,7 +27,13 @@ builder.Services
         serviceProvider => new SslProxyRepository(waasConnectionString)
     )
     .AddScoped<IWebshieldMappingService, WebshieldMappingService>()
-    .AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
+    .AddSingleton<IRabbitMqConsumer, RabbitMqConsumer>()
+    .AddHostedService<WebshieldActualStateListener>()
+    .AddTemporalClient(options =>
+    {
+        options.TargetHost = builder.Configuration["Temporal:TargetHost"];
+
+    });
 
 builder.Services
     .AddHostedTemporalWorker(

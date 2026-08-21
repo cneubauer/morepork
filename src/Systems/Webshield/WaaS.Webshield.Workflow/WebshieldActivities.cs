@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Temporalio.Activities;
 using WaaS.Persistence;
 

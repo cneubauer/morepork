@@ -31,12 +31,11 @@ services:
       - "7233:7233"
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig:ro
-    # auto-setup creates databases and runs schema migrations before the frontend
-    # binds 7233. Without this, dependents connect into that window and get refused.
     healthcheck:
-      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "temporal:7233"]
+      #test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "temporal:7233"]
+      test: ["CMD-SHELL", "temporal operator cluster health --address $(hostname -i | tr -d '[:space:]'):7233"]
       interval: 5s
-      timeout: 5s
+      timeout: 15s
       retries: 30
       start_period: 30s
 

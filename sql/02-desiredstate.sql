@@ -11,7 +11,7 @@ CREATE TABLE desired_state (
     applied TIMESTAMP,
     expired TIMESTAMP,
     next_check TIMESTAMP WITH TIME ZONE,
-    transaction_id VARCHAR(255) NOT NULL PRIMARY KEY,
+    transaction_id VARCHAR(255) NOT NULL,
     PRIMARY KEY (stack_instance_id, system_instance_id, state_namespace, state_zone, state_version)
 );
 CREATE INDEX ON desired_state (next_check);

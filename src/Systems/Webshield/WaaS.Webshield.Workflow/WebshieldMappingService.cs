@@ -24,6 +24,7 @@ public class WebshieldMappingService(IDesiredStateStore<WebshieldData> webshield
                 Zone = stackInstance.Zone,
                 SystemInstanceId = 0,
                 Data = new WebshieldData(),
+                TransactionId = Guid.NewGuid().ToString(),
             };
 
         var existingMappings = webshieldDesiredState.Data.Mappings;
@@ -54,7 +55,7 @@ public class WebshieldMappingService(IDesiredStateStore<WebshieldData> webshield
             }
         }
 
-        await webshieldDesiredStateStore.Save(transaction, webshieldDesiredState);
+        await webshieldDesiredStateStore.Save(transaction, webshieldDesiredState, webshieldDesiredState.TransactionId);
 
         await transaction.CommitAsync();
     }
