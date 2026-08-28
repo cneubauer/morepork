@@ -17,6 +17,8 @@ public static class IServiceCollectionExtensions
     public static IServiceCollection AddTenantStore(this IServiceCollection services, string connectionString)
     {
         SqlMapper.AddTypeHandler(new JsonTypeHandler<TenantProfile>());
+        SqlMapper.AddTypeHandler(new JsonTypeHandler<IReadOnlyDictionary<string, TenantProfile>>());
+        SqlMapper.AddTypeHandler(new JsonTypeHandler<Dictionary<string, TenantProfile>>());
 
         services.AddScoped<ITenantStore>(serviceProvider => new TenantStore(connectionString));
 

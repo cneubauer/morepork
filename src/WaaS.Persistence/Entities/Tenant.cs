@@ -1,8 +1,8 @@
 namespace WaaS.Persistence;
 
-public class Tenant
+public record Tenant
 {
-    public required short Id { get; set; }
-    public required string Name { get; set; }
-    public TenantProfile Profile { get; set; } = new();
+    public required short Id { get; init; }
+    public required string Name { get; init; }
+    public IReadOnlyDictionary<string, TenantProfile> Profiles { get; init; } = new Dictionary<string, TenantProfile>();
 }
