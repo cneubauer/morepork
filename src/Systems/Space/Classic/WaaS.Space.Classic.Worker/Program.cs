@@ -23,7 +23,7 @@ builder.Services
     .AddDesiredStateStore<SharedWebspaceData>(waasConnectionString)
     .AddDesiredStateStore<WebshieldData>(waasConnectionString)
     .AddTenantStore(waasConnectionString)
-    .AddScoped<IWebshieldMappingService, WebshieldMappingService>()
+    .AddScoped<IWebshieldService, WebshieldService>()
     .AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Webspace>, WebspaceMiddlewareService>(
         client => client.BaseAddress = new Uri(builder.Configuration["WebspaceMiddleware:BaseUrl"]
             ?? throw new InvalidOperationException("Missing WebspaceMiddleware:BaseUrl"))

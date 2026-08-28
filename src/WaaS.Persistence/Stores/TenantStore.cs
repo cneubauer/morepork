@@ -5,8 +5,9 @@ public class TenantStore(string connectionString) : ITenantStore
     public async Task<Tenant?> Get(string tenantName)
     {
         var sql = """
-            SELECT id, name, profile
+            SELECT id, name, profile_data as profile
                 FROM tenant
+                JOIN tenant_profile ON tenant.id = tenant_profile.tenant_id
                 WHERE name = @TenantName
         """;
 
@@ -21,8 +22,9 @@ public class TenantStore(string connectionString) : ITenantStore
     public async Task<Tenant?> Read(short tenantId)
     {
         var sql = """
-            SELECT id, name, profile
+            SELECT id, name, profile_data as profile
                 FROM tenant
+                JOIN tenant_profile ON tenant.id = tenant_profile.tenant_id
                 WHERE id = @TenantId
         """;
 

@@ -4,7 +4,7 @@ using WaaS.Persistence;
 
 public record WebshieldMapping(string Domain, string Destination, bool IsEnabled = true);
 
-public interface IWebshieldMappingService
+public interface IWebshieldService
 {
     Task PatchWebshieldMappings(
         IStackInstance stackInstance,

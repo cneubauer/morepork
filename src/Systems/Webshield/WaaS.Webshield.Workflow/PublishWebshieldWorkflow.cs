@@ -26,9 +26,7 @@ public class PublishWebshieldWorkflow
         );
 
         foreach (var node in nodes)
-        {
             _pendingNodes.Add(node);
-        }
 
         if (_pendingNodes.Count > 0)
         {

@@ -1,10 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Temporalio.Api.Enums.V1;
-using Temporalio.Client;
-using WaaS.Common.Workflow;
-using WaaS.Persistence;
-using WaaS.Space.Classic.DesiredState;
-using WaaS.Space.Classic.Workflow;
 
 namespace WaaS.WebApi;
 
@@ -14,8 +9,7 @@ public class ClassicWebspaceController(
     ITemporalClient temporalClient,
     ITenantStore tenantStore,
     IStackInstanceStore stackInstanceStore,
-    IDesiredStateStore<SharedWebspaceData> desiredStateStore,
-    ILogger<ClassicWebspaceController> logger
+    IDesiredStateStore<SharedWebspaceData> desiredStateStore
 ) : ControllerBase
 {
     /// <summary>
@@ -83,6 +77,14 @@ public class ClassicWebspaceController(
 
         #region Dispath Workflow
 
+        var waasContext = new WaasContext<SharedWebspaceData>
+        {
+            Tenant = tenantEntity,
+            StackInstance = (StackInstance)stackInstance,
+            DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
+            TransactionId = transactionId
+        };
+
         var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
         var startOperation = WithStartWorkflowOperation.Create(
@@ -94,29 +96,27 @@ public class ClassicWebspaceController(
                 IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
             });
 
-        try
-        {
-            var resultContext = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-                (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(waasContext),
-                new WorkflowUpdateWithStartOptions(startOperation)
-                {
-                    Rpc = new() { CancellationToken = HttpContext.RequestAborted },
-                }
-            );
+        var resultContext = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
+            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(waasContext),
+            new WorkflowUpdateWithStartOptions(startOperation)
+            {
+                Rpc = new() { CancellationToken = HttpContext.RequestAborted },
+            }
+        );
 
         await desiredStateStore.Dispatched(transactionId);
 
         #endregion
 
-        if (result is null)
+        if (resultContext is null)
             return Accepted(desiredState!.Data.Space.ToViewModel(desiredState.SystemInstanceId!.Value));
 
-        if (result.ValidationErrors.Count > 0)
-            return BadRequest(new { Errors = result.ValidationErrors });
+        if (resultContext.ValidationErrors.Count > 0)
+            return BadRequest(new { Errors = resultContext.ValidationErrors });
 
         Response.Headers.Append("Transaction-Id", transactionId);
 
-        return Accepted(result.DesiredState!.Data.Space.ToViewModel(result.DesiredState.SystemInstanceId!.Value));
+        return Accepted(resultContext.DesiredState!.Data.Space.ToViewModel(resultContext.DesiredState.SystemInstanceId!.Value));
     }
 
     /// <summary>

@@ -11,21 +11,17 @@ using WaaS.Webshield.Workflow;
 [method:WorkflowInit]
 public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemInstanceId)
 {
-    private bool _isTechMwPublishing = false;
-    private readonly Queue<WaasContext<SharedWebspaceData>> _pendingUpdates = new();
-    private readonly List<string> _inFlightTransactionOrder = [];
-    private readonly HashSet<string> _acknowledgedTransactions = [];
-
+    private bool _closed = false;
     private readonly HashSet<string> _pending = [];
     private readonly HashSet<string> _acknowledged = [];
 
     private readonly ConcurrentQueue<WaasContext<SharedWebspaceData>> _queue = [];
 
     [WorkflowQuery]
-    public IReadOnlyCollection<string> InFlightTransactions => [.. _inFlightTransactionOrder];
+    public IReadOnlyCollection<string> InFlightTransactions => [.. _pending];
 
     [WorkflowQuery]
-    public IReadOnlyCollection<string> AcknowledgedTransactions => [.. _acknowledgedTransactions];
+    public IReadOnlyCollection<string> AcknowledgedTransactions => [.. _acknowledged];
 
     [WorkflowRun]
     public async Task<IReadOnlyCollection<string>> PublishClassicWebspace(ulong stackInstanceId, ulong systemInstanceId)
@@ -37,9 +33,21 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 await Workflow.DelayAsync(TimeSpan.FromMicroseconds(100));
                 continue;
             }
+            
+            // TODO: Determine webshield mappings patch
+            var mappingsToAdd = new List<WebshieldMapping>();
+            var mappingsToRemove = new List<WebshieldMapping>();
+
+            var webshieldContext = await Workflow.ExecuteActivityAsync(
+                (WebshieldActivities act) => act.PatchWebshieldMappings(waasContext, mappingsToAdd, mappingsToRemove),
+                new()
+                {
+                    StartToCloseTimeout = TimeSpan.FromSeconds(15)
+                }
+            );
 
             var webshieldWorkflow = Workflow.ExecuteChildWorkflowAsync(
-                (PatchWebshieldMappingsWorkflow workflow) => workflow.PatchWebshieldMappings(waasContext),
+                (PublishWebshieldWorkflow workflow) => workflow.StartPublishingWebshieldMappings(webshieldContext),
                 new()
                 {
                     Id = $"webshield-{stackInstanceId}-{systemInstanceId}-{waasContext.TransactionId}",
@@ -76,12 +84,12 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     }
 
     [WorkflowUpdate]
-    public async Task<WaasContext<SharedWebspaceData>> PublishDesiredState(WaasContext<SharedWebspaceData> context)
+    public async Task<WaasContext<SharedWebspaceData>> PublishDesiredState(WaasContext<SharedWebspaceData> waasContext)
     {
         _closed = false;
 
-        var waasContext = await Workflow.ExecuteActivityAsync(
-            (WaasActivities<SharedWebspaceData> act) => act.ReadWaasContext(transactionId, stackInstanceId, systemInstanceId),
+        waasContext = await Workflow.ExecuteActivityAsync(
+            (WaasActivities<SharedWebspaceData> act) => act.ReadWaasContext(waasContext.TransactionId, stackInstanceId, systemInstanceId),
             new()
             {
                 StartToCloseTimeout = TimeSpan.FromSeconds(10)
@@ -96,7 +104,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             }
         );
 
-        _pending.Add(transactionId);
+        _pending.Add(waasContext.TransactionId);
 
         _queue.Enqueue(waasContext);
 

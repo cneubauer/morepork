@@ -1,7 +1,15 @@
 CREATE TABLE tenant (
     id SMALLINT NOT NULL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    profile JSONB NOT NULL
+);
+
+CREATE TYPE tenant_profile_type AS ENUM ('general', 'webspace', 'webshield');
+
+CREATE TABLE tenant_profile (
+    id BIGSERIAL NOT NULL PRIMARY KEY,
+    tenant_id SMALLINT NOT NULL REFERENCES tenant (id) ON DELETE CASCADE,
+    type tenant_profile_type NOT NULL,
+    profile_data JSONB NOT NULL
 );
 
 CREATE TABLE stack_instance (

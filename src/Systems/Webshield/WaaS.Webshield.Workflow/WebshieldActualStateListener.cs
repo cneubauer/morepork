@@ -28,22 +28,11 @@ public class WebshieldActualStateListener(
 
             var resourceId = $"webshield-{stackInstanceId}-{txId}";
 
-            try
-            {
-                var workflowHandle = temporalClient.GetWorkflowHandle<PublishWebshieldWorkflow>(resourceId);
-                await workflowHandle.SignalAsync(
-                    workflow => workflow.ReceiveBackendNotification(txId, reportingNode)
-                );
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Could not signal workflow with ID {ResourceId}, trying fallback", resourceId);
-                var fallbackId = $"webshield-{stackInstanceId}";
-                var fallbackHandle = temporalClient.GetWorkflowHandle<PublishWebshieldWorkflow>(fallbackId);
-                await fallbackHandle.SignalAsync(
-                    workflow => workflow.ReceiveBackendNotification(txId, reportingNode)
-                );
-            }
+            var workflowHandle = temporalClient.GetWorkflowHandle<PublishWebshieldWorkflow>(resourceId);
+
+            await workflowHandle.SignalAsync(
+                workflow => workflow.ReceiveBackendNotification(txId, reportingNode)
+            );
 
             return true;
         }

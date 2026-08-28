@@ -26,7 +26,7 @@ builder.Services
     .AddScoped<ISslProxyRepository>(
         serviceProvider => new SslProxyRepository(waasConnectionString)
     )
-    .AddScoped<IWebshieldMappingService, WebshieldMappingService>()
+    .AddScoped<IWebshieldService, WebshieldService>()
     .AddSingleton<IRabbitMqConsumer, RabbitMqConsumer>()
     .AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>()
     .AddHostedService<WebshieldActualStateListener>()

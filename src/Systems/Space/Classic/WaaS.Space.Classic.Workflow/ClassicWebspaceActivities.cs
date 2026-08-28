@@ -9,7 +9,7 @@ using WaaS.Webshield.Workflow;
 
 public class ClassicWebspaceActivities(
     IDesiredStateStore<SharedWebspaceData> desiredStateStore,
-    IWebshieldMappingService webshieldMappingService,
+    IWebshieldService webshieldMappingService,
     ISpaceMiddlewareService<SharedWebspaceData, WebspaceMiddleware.Webspace> webspaceMiddlewareService,
     ILogger<ClassicWebspaceActivities> logger
 )
