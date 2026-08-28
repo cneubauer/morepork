@@ -1,19 +1,25 @@
 using Microsoft.Extensions.DependencyInjection;
 using Temporalio.Activities;
+using WaaS.Common.Workflow;
 using WaaS.Persistence;
-
-namespace WaaS.Webshield.Workflow;
+using WaaS.Webshield.DesiredState;
 
 public class WebshieldActivities(
     ISslProxyRepository sslProxyRepository,
     IRabbitMqPublisher statePublisher,
-    IWebshieldMappingService webshieldMappingService
+    IWebshieldMappingService webshieldMappingService,
+    ILogger<WebshieldActivities> logger
 )
 {
     [Activity]
     public async Task<IReadOnlyList<string>> SendToWebshieldNodes(WaasContext<WebshieldData> waasContext)
     {
         var nodes = await sslProxyRepository.GetWebshieldNodes(waasContext.StackInstance.Zone);
+        if (nodes.Count == 0)
+        {
+            logger.LogWarning("No Webshield nodes found for zone {Zone} on stack {StackInstanceId}", waasContext.StackInstance.Zone, waasContext.StackInstance.Id);
+            return [];
+        }
 
         var protobuf = waasContext.DesiredState.Data.ToProtobuf(
             waasContext.StackInstance.Id,
@@ -25,9 +31,9 @@ public class WebshieldActivities(
         );
 
         var routingKey = protobuf.GetRoutingKey();
-
         var body = protobuf.ToProtoBuf();
 
+        logger.LogInformation("Publishing desired state to {Count} Webshield nodes with routing key {RoutingKey}", nodes.Count, routingKey);
         await statePublisher.Publish(routingKey, body, waasContext.TransactionId);
 
         return nodes;

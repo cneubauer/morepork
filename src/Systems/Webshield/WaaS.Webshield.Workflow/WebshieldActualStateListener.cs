@@ -2,6 +2,8 @@ using Temporalio.Client;
 
 namespace WaaS.Webshield.Workflow;
 
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Temporalio.Client;
 
 public class WebshieldActualStateListener(
