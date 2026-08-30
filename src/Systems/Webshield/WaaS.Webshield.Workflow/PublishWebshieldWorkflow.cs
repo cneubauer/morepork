@@ -28,22 +28,10 @@ public class PublishWebshieldWorkflow
         foreach (var node in nodes)
             _pendingNodes.Add(node);
 
-        if (_pendingNodes.Count > 0)
-        {
-            var allAcked = await Workflow.WaitConditionAsync(
-                () => _pendingNodes.Count == 0,
-                TimeSpan.FromSeconds(60)
-            );
-
-            if (!allAcked)
-            {
-                Workflow.Logger.LogWarning(
-                    "Timeout waiting for Webshield nodes to ACK transaction {TransactionId}. Remaining pending nodes: {Nodes}",
-                    context.TransactionId,
-                    string.Join(", ", _pendingNodes)
-                );
-            }
-        }
+        var allAcked = await Workflow.WaitConditionAsync(
+            () => _pendingNodes.Count == 0,
+            Timeout.InfiniteTimeSpan
+        );
 
         await Workflow.ExecuteActivityAsync(
             (WaasActivities<WebshieldData> act) => act.SendNotification(context.TransactionId),
@@ -57,9 +45,8 @@ public class PublishWebshieldWorkflow
     public async Task ReceiveBackendNotification(string transactionId, string node)
     {
         if (_pendingNodes.Remove(node))
-        {
             _acknowledgedNodes.Add(node);
-        }
+
         await Task.CompletedTask;
     }
 }

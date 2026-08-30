@@ -36,7 +36,11 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             Workflow.Logger.LogInformation("Processing transaction {TransactionId} for stack instance {StackInstanceId} and system instance {SystemInstanceId}", waasContext.TransactionId, stackInstanceId, systemInstanceId);
             
             // TODO: Determine webshield mappings patch
-            var mappingsToAdd = new List<WebshieldMapping>();
+            var mappingsToAdd = new List<WebshieldMapping>
+            {
+                new("example.com", waasContext.DesiredState.Data.Webspace.Hostname!, true)
+            };
+
             var mappingsToRemove = new List<WebshieldMapping>();
 
             var webshieldContext = await Workflow.ExecuteActivityAsync(
@@ -52,7 +56,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 (PublishWebshieldWorkflow workflow) => workflow.StartPublishingWebshieldMappings(webshieldContext),
                 new()
                 {
-                    Id = $"webshield-{stackInstanceId}-{systemInstanceId}-{waasContext.TransactionId}",
+                    Id = $"webshield-{waasContext.TransactionId}",
                     TaskQueue = "webshield",
                 }
             );

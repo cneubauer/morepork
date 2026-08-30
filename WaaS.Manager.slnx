@@ -34,5 +34,8 @@
   <Folder Name="/test/">
     <Project Path="test/WaaS.Common.Comparison.UnitTests/WaaS.Common.Comparison.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/mocks/">
+    <Project Path="mocks/webshield-node/WaaS.Mock.WebshieldNode.csproj" />
+  </Folder>
   <Project Path="src/WaaS.WebApi/WaaS.WebApi.csproj" />
 </Solution>

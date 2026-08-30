@@ -17,21 +17,16 @@ public class WebshieldActualStateListener(
             handler: HandleActualState,
             cancellationToken);
 
-    private async Task<bool> HandleActualState(byte[] data, string transactionId, string node)
+    private async Task<bool> HandleActualState(byte[] data, string correlationId, string replyTo)
     {
         try
         {
-            var protobuf = data.FromProtoBuf<ActualStateProxy>();
-            var txId = protobuf.header.tags.Count > 0 ? protobuf.header.tags[0] : transactionId;
-            var stackInstanceId = protobuf.header.stackInstanceId;
-            var reportingNode = !string.IsNullOrEmpty(protobuf.nodeFqdn) ? protobuf.nodeFqdn : node;
+            var workflowId = $"webshield-{correlationId}";
 
-            var resourceId = $"webshield-{stackInstanceId}-{txId}";
-
-            var workflowHandle = temporalClient.GetWorkflowHandle<PublishWebshieldWorkflow>(resourceId);
+            var workflowHandle = temporalClient.GetWorkflowHandle<PublishWebshieldWorkflow>(workflowId);
 
             await workflowHandle.SignalAsync(
-                workflow => workflow.ReceiveBackendNotification(txId, reportingNode)
+                workflow => workflow.ReceiveBackendNotification(correlationId, replyTo)
             );
 
             return true;

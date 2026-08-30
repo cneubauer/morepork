@@ -111,6 +111,21 @@ services:
         condition: service_healthy
     restart: on-failure
 
+  webshield-node-mock:
+    build:
+      context: .
+      dockerfile: mocks/webshield-node/Dockerfile
+    environment:
+      RabbitMq__Hostname: "rabbitmq"
+      RabbitMq__Username: "${RABBITMQ_USER}"
+      RabbitMq__Password: "${RABBITMQ_PASSWORD}"
+      Webshield__NodeFqdns: "some-de-webshield-node-1.server.lan,some-de-webshield-node-2.server.lan"
+      Webshield__AckDelayMs: "1000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
   waas-api:
     build:
       context: .
