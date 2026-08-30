@@ -68,27 +68,30 @@ public static class ClassicWebspaceExamples
             ],
             Domains =
             [
-                new Vm.DomainBinding
+                new ClassicVm.DomainBinding
                 {
                     DomainId = 1230001,
                     Domain = "foo.de",
-                    IsEnabled = true
+                    IsEnabled = true,
+                    Environment = "php8.5",
                 },
-                new Vm.DomainBinding
+                new ClassicVm.DomainBinding
                 {
                     DomainId = 1230002,
                     Domain = "www.foo.de",
-                    IsEnabled = true
-                }
+                    IsEnabled = true,
+                    Environment = "php8.5",
+                },
             ],
             ManagedDomainBindings =
             [
-                new Vm.DomainBinding
+                new ClassicVm.DomainBinding
                 {
                     DomainId = 67890001,
                     Domain = "home-5004265496.some-product-domain.de",
-                    IsEnabled = true
-                }
+                    IsEnabled = true,
+                    Environment = "php8.5",
+                },
             ],
             MailConfiguration = new Vm.MailConfiguration
             {

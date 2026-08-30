@@ -1,10 +1,10 @@
-using WaaS.Common.Comparison;
+using ObjectCompare;
 
 namespace WaaS.Webshield.DesiredState;
 
 public class ProxyMapping
 {
-    [ListItemKeyAttribute]
+    [ItemKeyAttribute]
     public string Domain { get; set; } = "";
     public string Destination { get; set; } = "";
     public ModeType Mode { get; set; }

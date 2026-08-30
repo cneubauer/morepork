@@ -1,4 +1,4 @@
-using WaaS.Common.Comparison;
+using ObjectCompare;
 
 namespace WaaS.Common.Workflow;
 
@@ -17,5 +17,5 @@ public record WaasContext<TDesiredState> : WaasContext where TDesiredState : IDe
 
 public record ProcessingContext<TDesiredState> : WaasContext<TDesiredState> where TDesiredState : IDesiredStateData, new()
 {
-    public required ChangeSet Changes { get; init; }
+    public required IReadOnlyList<IChange> Changes { get; init; }
 }

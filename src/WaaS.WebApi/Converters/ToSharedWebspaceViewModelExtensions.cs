@@ -25,10 +25,10 @@ public static class ToViewModelExtensions
             : [.. entity.AdminAccounts.Select(x => x.ToViewModel<Space.ViewModel.AdminAccount>())];
 
         viewModel.Domains = entity.Domains.Count == 0 ? null
-            : [.. entity.Domains.Select(x => x.ToViewModel<Space.ViewModel.DomainBinding, string>())];
+            : [.. entity.Domains.Select(x => x.ToViewModel())];
 
         viewModel.ManagedDomainBindings = entity.HttpAccessDomains.Count == 0 ? null
-            : [.. entity.HttpAccessDomains.Select(x => x.ToViewModel<Space.ViewModel.DomainBinding, string>())];
+            : [.. entity.HttpAccessDomains.Select(x => x.ToViewModel())];
 
         viewModel.CronTabs = entity.CronTabs.Count == 0 ? null
             : [.. entity.CronTabs.Select(x => new Space.ViewModel.CronTab
@@ -41,4 +41,16 @@ public static class ToViewModelExtensions
 
         return viewModel;
     }
+
+    private static ViewModel.DomainBinding ToViewModel(this DomainBinding<string> desiredState)
+        => new()
+        {
+            Domain = desiredState.DomainName,
+            Environment = desiredState.Environment,
+            TargetPath = new()
+            {
+                Path = desiredState.TargetPath.DirPath,
+                Type = (ViewModel.DirectoryType)desiredState.TargetPath.DirType,
+            }
+        };
 }

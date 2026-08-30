@@ -1,4 +1,4 @@
-﻿using WaaS.Common.Comparison;
+using ObjectCompare;
 using WaaS.Common.DesiredState;
 
 namespace WaaS.Space.DesiredState;
@@ -24,7 +24,7 @@ public class Account : WaasResource, ICredential
     /// <summary>
     /// Optional data of the client for reference purposes.
     /// </summary>
-    [ListItemKeyAttribute]
+    [ItemKeyAttribute]
     public string? ExtReference { get; set; }
 
     /// <summary>

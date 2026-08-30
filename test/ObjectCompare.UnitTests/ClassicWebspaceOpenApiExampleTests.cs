@@ -9,7 +9,7 @@ using WaaS.WebApi.OpenApi;
 using ClassicVm = WaaS.Space.Classic.ViewModel;
 using Vm = WaaS.Space.ViewModel;
 
-namespace WaaS.Common.Comparison.UnitTests;
+namespace ObjectCompare.UnitTests;
 
 public class ClassicWebspaceOpenApiExampleTests
 {

@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using WaaS.Common.Comparison;
+using ObjectCompare;
 
 namespace WaaS.Persistence;
 
@@ -318,7 +318,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         // Comparing a first save against a default instance rather than null reports each field that
         // differs from the empty state, instead of one root-level change carrying the whole document.
         var changes = (previousState is null ? new TDesiredState() : previousState.Data)
-            .Compare(current.Data);
+            .CompareTo(current.Data);
 
         return new DesiredStateSaveResult<TDesiredState>(current, previousState, changes);
     }

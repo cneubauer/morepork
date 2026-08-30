@@ -1,6 +1,6 @@
 using WaaS.Webshield.ProtoBuf;
 
-namespace WaaS.Common.Comparison.UnitTests;
+namespace ObjectCompare.UnitTests;
 
 public class WebshieldNodeMockTests
 {

@@ -1,9 +1,9 @@
-using WaaS.Common.Comparison;
+using ObjectCompare;
 
 namespace WaaS.Persistence;
 
 public sealed record DesiredStateSaveResult<T>(
     IDesiredState<T> Current,
     IDesiredState<T>? Previous,
-    ChangeSet Changes
+    IReadOnlyList<IChange> Changes
 );

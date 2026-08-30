@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Common\WaaS.Common.Comparison\WaaS.Common.Comparison.csproj" />
+    <ProjectReference Include="..\Common\ObjectCompare\ObjectCompare.csproj" />
   </ItemGroup>
 
 </Project>
