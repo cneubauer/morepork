@@ -1,6 +1,6 @@
 CREATE TABLE tenant (
     id SMALLINT NOT NULL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL UNIQUE
 );
 
 CREATE TYPE tenant_profile_type AS ENUM ('general', 'webspace', 'webshield');

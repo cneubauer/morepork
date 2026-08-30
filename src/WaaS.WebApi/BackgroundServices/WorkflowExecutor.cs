@@ -121,7 +121,7 @@ public class WorkflowExecutor(
                 new WorkflowOptions
                 {
                     Id = resourceId,
-                    TaskQueue = WorkflowDefinitions.DefaultTaskQueue,
+                    TaskQueue = "space-classic",
                     IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
                 });
 

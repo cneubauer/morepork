@@ -3,7 +3,6 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>
-
   <ItemGroup>
     <!-- Framework -->
     <PackageVersion Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
@@ -13,23 +12,20 @@
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
     <PackageVersion Include="System.DirectoryServices.Protocols" Version="10.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
-    
     <!-- Workflow -->
     <PackageVersion Include="Temporalio" Version="1.17.0" />
     <PackageVersion Include="Temporalio.Extensions.Hosting" Version="1.17.0" />
-
     <!-- Data -->
     <PackageVersion Include="Dapper" Version="2.1.66" />
     <PackageVersion Include="Npgsql" Version="10.0.1" />
     <PackageVersion Include="protobuf-net" Version="3.2.30" />
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
-
     <!-- API -->
     <PackageVersion Include="Cronos" Version="0.11.0" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.16.16" />
-
     <!-- Testing -->
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.12" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />

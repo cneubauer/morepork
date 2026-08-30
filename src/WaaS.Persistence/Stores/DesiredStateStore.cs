@@ -66,7 +66,6 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
                 data,
                 tenant,
                 tombstoned,
-                created,
                 applied,
                 expired,
                 next_check,
@@ -81,7 +80,6 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
                 @Data::jsonb,
                 @Tenant,
                 @Tombstoned,
-                @Created,
                 @Applied,
                 @Expired,
                 @NextCheck,
@@ -170,11 +168,11 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             )
             INSERT INTO desired_state (
                 stack_instance_id, system_instance_id, state_namespace, state_zone, state_version,
-                data, tenant, tombstoned, created, applied, expired, next_check
+                data, tenant, tombstoned, applied, expired, next_check
             )
             SELECT
                 @StackInstanceId, id, @Namespace, @Zone, 0,
-                @Data::jsonb, @Tenant, false, @Created, NULL, NULL, @NextCheck
+                @Data::jsonb, @Tenant, false, NULL, NULL, @NextCheck
             FROM new_system
             RETURNING
                 stack_instance_id AS StackInstanceId,

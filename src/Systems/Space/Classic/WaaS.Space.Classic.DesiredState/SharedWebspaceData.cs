@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.Text.Json.Serialization;
 using WaaS.Persistence;
 using WaaS.Space.DesiredState;
 
@@ -12,7 +12,7 @@ public class SharedWebspaceData : IDesiredStateData, ISpaceData<SharedWebspace>
     /// <summary>
     /// This is the interface implementation for <see cref="ISpaceData{T}"/>
     /// </summary>
-    [NotMapped]
+    [JsonIgnore]
     public SharedWebspace Space => Webspace;
 
     /// <summary>

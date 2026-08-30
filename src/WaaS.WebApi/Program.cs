@@ -3,11 +3,22 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 
+using WaaS.WebApi.OpenApi;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddKeyPerFile("/run/secrets", optional: true);
 
-builder.Services.AddOpenApi();
+var jsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+{
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+};
+
+builder.Services.AddOpenApi(options =>
+{
+    options.AddOperationTransformer(new SharedWebspaceOperationTransformer(jsonSerializerOptions));
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

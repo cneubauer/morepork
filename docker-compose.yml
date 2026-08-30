@@ -8,7 +8,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./sql:/docker-entrypoint-initdb.d:ro
+      - ./sql:/docker-entrypoint-initdb.d:ro,z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 5s
@@ -30,7 +30,7 @@ services:
     ports:
       - "7233:7233"
     volumes:
-      - ./dynamicconfig:/etc/temporal/config/dynamicconfig:ro
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig:ro,z
     healthcheck:
       #test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "temporal:7233"]
       test: ["CMD-SHELL", "temporal operator cluster health --address $(hostname -i | tr -d '[:space:]'):7233"]
@@ -66,6 +66,8 @@ services:
   webspace-middleware-mock:
     build:
       context: ./mocks/webspace-middleware
+    ports:
+      - "8081:8081"
     # No shell in the image beyond BusyBox and no curl, so probe with node itself.
     healthcheck:
       test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:8081/_mock/webspaces', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]

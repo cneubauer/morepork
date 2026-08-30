@@ -26,7 +26,6 @@ builder.Services
     .AddScoped<ISslProxyRepository>(
         serviceProvider => new SslProxyRepository(waasConnectionString)
     )
-    .AddScoped<IWebshieldService, WebshieldService>()
     .AddSingleton<IRabbitMqConsumer, RabbitMqConsumer>()
     .AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>()
     .AddHostedService<WebshieldActualStateListener>()
@@ -40,7 +39,7 @@ builder.Services
     .AddHostedTemporalWorker(
         builder.Configuration["Temporal:TargetHost"]!,
         WorkflowDefinitions.ClientNamespace,
-        WorkflowDefinitions.DefaultTaskQueue)
+        "webshield")
     .AddScopedActivities<WaasActivities<WebshieldData>>()
     .AddScopedActivities<WebshieldActivities>()
     .AddWorkflow<PublishWebshieldWorkflow>();

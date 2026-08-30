@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using Temporalio.Workflows;
 using WaaS.Common.Workflow;
 using WaaS.Space.Classic.DesiredState;
-using WaaS.Webshield.DesiredState;
 using WaaS.Webshield.Workflow;
 
 [Workflow]
@@ -26,13 +25,15 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     [WorkflowRun]
     public async Task<IReadOnlyCollection<string>> PublishClassicWebspace(ulong stackInstanceId, ulong systemInstanceId)
     {
-        while (!_closed && !_queue.IsEmpty)
+        while (!_closed)
         {
             if (!_queue.TryDequeue(out var waasContext))
             {
-                await Workflow.DelayAsync(TimeSpan.FromMicroseconds(100));
+                await Workflow.WaitConditionAsync(() => !_queue.IsEmpty || _closed);
                 continue;
             }
+
+            Workflow.Logger.LogInformation("Processing transaction {TransactionId} for stack instance {StackInstanceId} and system instance {SystemInstanceId}", waasContext.TransactionId, stackInstanceId, systemInstanceId);
             
             // TODO: Determine webshield mappings patch
             var mappingsToAdd = new List<WebshieldMapping>();
@@ -42,7 +43,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 (WebshieldActivities act) => act.PatchWebshieldMappings(waasContext, mappingsToAdd, mappingsToRemove),
                 new()
                 {
-                    StartToCloseTimeout = TimeSpan.FromSeconds(15)
+                    StartToCloseTimeout = TimeSpan.FromSeconds(15),
+                    TaskQueue = "webshield"
                 }
             );
 
@@ -51,6 +53,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 new()
                 {
                     Id = $"webshield-{stackInstanceId}-{systemInstanceId}-{waasContext.TransactionId}",
+                    TaskQueue = "webshield",
                 }
             );
 
@@ -63,19 +66,11 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             );
 
             await Workflow.WhenAllAsync(
-                webshieldWorkflow,
+                // webshieldWorkflow,
                 updateProductDns
             );
 
-            await Workflow.ExecuteActivityAsync(
-                (ClassicWebspaceActivities act) => act.MarkAsApplied(waasContext),
-                new()
-                {
-                    StartToCloseTimeout = TimeSpan.FromSeconds(10)
-                }
-            );
-
-            _acknowledged.Add(waasContext.TransactionId);
+            Workflow.Logger.LogInformation("Product DNS for transaction {TransactionId} and stack instance {StackInstanceId} has been updated", waasContext.TransactionId, stackInstanceId);
         }
 
         await Workflow.WaitConditionAsync(() => Workflow.AllHandlersFinished);
@@ -96,6 +91,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             }
         );
 
+        Workflow.Logger.LogInformation("Got WaaS context: {TransactionId}, Stack ID: {StackInstanceId}", waasContext.TransactionId, stackInstanceId);
+
         waasContext = await Workflow.ExecuteActivityAsync(
             (ClassicWebspaceActivities act) => act.SendToTechMw(waasContext),
             new()
@@ -103,6 +100,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 StartToCloseTimeout = TimeSpan.FromSeconds(15)
             }
         );
+
+        Workflow.Logger.LogInformation("Sent WaaS context to Tech MW: {TransactionId}, Stack ID: {StackInstanceId}", waasContext.TransactionId, stackInstanceId);
 
         _pending.Add(waasContext.TransactionId);
 
@@ -115,12 +114,24 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     public async Task ReceiveBackendNotification(string transactionId)
     {
         await Workflow.ExecuteActivityAsync(
+            (ClassicWebspaceActivities act) => act.MarkAsApplied(transactionId),
+            new()
+            {
+                StartToCloseTimeout = TimeSpan.FromSeconds(10)
+            }
+        );
+
+        Workflow.Logger.LogInformation("Marked transaction as applied: {TransactionId}", transactionId);
+
+        await Workflow.ExecuteActivityAsync(
             (WaasActivities<SharedWebspaceData> act) => act.SendNotification(transactionId),
             new()
             {
                 StartToCloseTimeout = TimeSpan.FromSeconds(10)
             }
         );
+
+        Workflow.Logger.LogInformation("Sent notification for transaction: {TransactionId}", transactionId);
 
         _acknowledged.Add(transactionId);
         _pending.Remove(transactionId);

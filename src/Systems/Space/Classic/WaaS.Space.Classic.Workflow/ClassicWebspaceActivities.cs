@@ -5,11 +5,8 @@ using Temporalio.Activities;
 using Temporalio.Exceptions;
 using WaaS.Common.Workflow;
 using WaaS.Space.Classic.DesiredState;
-using WaaS.Webshield.Workflow;
-
 public class ClassicWebspaceActivities(
     IDesiredStateStore<SharedWebspaceData> desiredStateStore,
-    IWebshieldService webshieldMappingService,
     ISpaceMiddlewareService<SharedWebspaceData, WebspaceMiddleware.Webspace> webspaceMiddlewareService,
     ILogger<ClassicWebspaceActivities> logger
 )
@@ -46,9 +43,9 @@ public class ClassicWebspaceActivities(
     }
 
     [Activity]
-    public async Task MarkAsApplied(WaasContext<SharedWebspaceData> waasContext)
+    public async Task MarkAsApplied(string transactionId)
     {
-        await desiredStateStore.MarkAsApplied(waasContext.TransactionId);
+        await desiredStateStore.MarkAsApplied(transactionId);
     }
 
     [Activity]
@@ -56,22 +53,5 @@ public class ClassicWebspaceActivities(
     {
         logger.LogInformation("Updating Product DNS for stack instance {StackInstanceId}", waasContext.StackInstance.Id);
         await Task.CompletedTask;
-    }
-
-    private static List<WebshieldMapping> ExtractWebshieldMappings(SharedWebspace webspace)
-    {
-        if (webspace.Domains is null || webspace.Domains.Count == 0)
-        {
-            return [];
-        }
-
-        return webspace.Domains
-            .Where(d => !string.IsNullOrWhiteSpace(d.DomainName))
-            .Select(d => new WebshieldMapping(
-                Domain: d.DomainName,
-                Destination: d.TargetPath?.ToString() ?? string.Empty,
-                IsEnabled: d.IsEnabled ?? true
-            ))
-            .ToList();
     }
 }

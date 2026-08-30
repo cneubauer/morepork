@@ -13,7 +13,6 @@
   <ItemGroup>
     <ProjectReference Include="..\WaaS.Space.Classic.Workflow\WaaS.Space.Classic.Workflow.csproj" />
     <ProjectReference Include="..\..\WaaS.Space.Workflow\WaaS.Space.Workflow.csproj" />
-    <ProjectReference Include="..\..\..\Webshield\WaaS.Webshield.DesiredState\WaaS.Webshield.DesiredState.csproj" />
   </ItemGroup>
 
 </Project>
