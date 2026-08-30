@@ -1,3 +1,5 @@
+using WaaS.Common.Comparison;
+
 namespace WaaS.Common.Workflow;
 
 public record WaasContext
@@ -11,4 +13,9 @@ public record WaasContext
 public record WaasContext<TDesiredState> : WaasContext where TDesiredState : IDesiredStateData, new()
 {
     public required DesiredState<TDesiredState> DesiredState { get; init; }
+}
+
+public record ProcessingContext<TDesiredState> : WaasContext<TDesiredState> where TDesiredState : IDesiredStateData, new()
+{
+    public required ChangeSet Changes { get; init; }
 }

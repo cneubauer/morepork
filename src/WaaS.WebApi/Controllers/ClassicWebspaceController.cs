@@ -67,23 +67,25 @@ public class ClassicWebspaceController(
 
         desiredState.Data.Webspace.Apply(webspace);
 
-        desiredState = (await desiredStateStore.Save(transaction, desiredState, transactionId)).Current;
+        var saveResult = await desiredStateStore.Save(transaction, desiredState, transactionId);
+        desiredState = saveResult.Current;
 
-        await desiredStateStore.Schedule(transaction, transactionId, stackInstanceId, systemInstanceId);
+        var context = new ProcessingContext<SharedWebspaceData>
+        {
+            Tenant = tenantEntity,
+            StackInstance = (StackInstance)stackInstance,
+            DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
+            TransactionId = transactionId,
+            Changes = saveResult.Changes,
+        };
+
+        await desiredStateStore.Schedule(transaction, context);
 
         await transaction.CommitAsync();
 
         #endregion
 
         #region Dispath Workflow
-
-        var waasContext = new WaasContext<SharedWebspaceData>
-        {
-            Tenant = tenantEntity,
-            StackInstance = (StackInstance)stackInstance,
-            DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
-            TransactionId = transactionId
-        };
 
         var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
@@ -96,8 +98,8 @@ public class ClassicWebspaceController(
                 IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
             });
 
-        var resultContext = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(waasContext),
+        context = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
+            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(context),
             new WorkflowUpdateWithStartOptions(startOperation)
             {
                 Rpc = new() { CancellationToken = HttpContext.RequestAborted },
@@ -108,15 +110,15 @@ public class ClassicWebspaceController(
 
         #endregion
 
-        if (resultContext is null)
+        if (context is null)
             return Accepted(desiredState!.Data.Space.ToViewModel(desiredState.SystemInstanceId!.Value));
 
-        if (resultContext.ValidationErrors.Count > 0)
-            return BadRequest(new { Errors = resultContext.ValidationErrors });
+        if (context.ValidationErrors.Count > 0)
+            return BadRequest(new { Errors = context.ValidationErrors });
 
         Response.Headers.Append("Transaction-Id", transactionId);
 
-        return Accepted(resultContext.DesiredState!.Data.Space.ToViewModel(resultContext.DesiredState.SystemInstanceId!.Value));
+        return Accepted(context.DesiredState!.Data.Space.ToViewModel(context.DesiredState.SystemInstanceId!.Value));
     }
 
     /// <summary>

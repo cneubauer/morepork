@@ -26,7 +26,7 @@ public class WebshieldActualStateListener(
             var workflowHandle = temporalClient.GetWorkflowHandle<PublishWebshieldWorkflow>(workflowId);
 
             await workflowHandle.SignalAsync(
-                workflow => workflow.ReceiveBackendNotification(correlationId, replyTo)
+                workflow => workflow.ReceiveNodeAck(correlationId, replyTo)
             );
 
             return true;

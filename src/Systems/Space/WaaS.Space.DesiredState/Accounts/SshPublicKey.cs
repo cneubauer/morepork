@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using WaaS.Common.Comparison;
 
 namespace WaaS.Space.DesiredState;
 
@@ -10,6 +11,7 @@ public class SshPublicKey
     [Required]
     [RegularExpression(@"^[A-Za-z0-9+\/]+=*$(?!\n)")]
     [StringLength(2764, MinimumLength = 68)]
+    [ListItemKeyAttribute]
     public required string Data { get; set; }
 
     /// <summary>

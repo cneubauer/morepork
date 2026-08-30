@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Dapper;
 using Npgsql;
 using Temporalio.Api.Enums.V1;
@@ -6,21 +8,29 @@ namespace WaaS.WebApi;
 
 public class WorkflowExecutor(
     ITemporalClient temporalClient,
-    IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
     ILogger<WorkflowExecutor> logger
 ) : BackgroundService
 {
     private static readonly TimeSpan _sweepInterval = TimeSpan.FromSeconds(1);
 
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters =
+        {
+            new JsonStringEnumConverter(),
+        }
+    };
+
     private const string ClaimSql = """
         DELETE FROM outbox
-        WHERE transaction_id IN (
-            SELECT transaction_id FROM outbox
+        WHERE ctid IN (
+            SELECT ctid FROM outbox
             WHERE leased_until < (NOW() AT TIME ZONE 'utc')
-            ORDER BY transaction_id FOR UPDATE SKIP LOCKED LIMIT 10
+            ORDER BY created FOR UPDATE SKIP LOCKED LIMIT 10
         )
-        RETURNING transaction_id AS TransactionId, stack_instance_id AS StackInstanceId, system_instance_id AS SystemInstanceId;
+        RETURNING context;
         """;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -52,7 +62,7 @@ public class WorkflowExecutor(
         await connection.OpenAsync(stoppingToken);
         await using var transaction = await connection.BeginTransactionAsync(stoppingToken);
 
-        var entries = (await connection.QueryAsync<OutboxEntry>(ClaimSql, transaction: transaction)).ToList();
+        var entries = (await connection.QueryAsync<string>(ClaimSql, transaction: transaction)).ToList();
 
         if (entries.Count == 0)
         {
@@ -60,50 +70,33 @@ public class WorkflowExecutor(
             return;
         }
 
-        using var scope = scopeFactory.CreateScope();
-        var stackInstanceStore = scope.ServiceProvider.GetRequiredService<IStackInstanceStore>();
-        var tenantStore = scope.ServiceProvider.GetRequiredService<ITenantStore>();
-        var desiredStateStore = scope.ServiceProvider.GetRequiredService<IDesiredStateStore<SharedWebspaceData>>();
-
-        foreach (var entry in entries)
+        foreach (var rawContext in entries)
         {
+            ProcessingContext<SharedWebspaceData>? context;
+            try
+            {
+                context = JsonSerializer.Deserialize<ProcessingContext<SharedWebspaceData>>(rawContext, _jsonOptions);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to deserialize outbox context: {RawContext}", rawContext);
+                continue;
+            }
+
+            if (context is null)
+            {
+                logger.LogWarning("Outbox entry contained null context");
+                continue;
+            }
+
+            var stackInstanceId = context.StackInstance.Id;
+            var systemInstanceId = context.DesiredState.SystemInstanceId ?? 0;
+
             logger.LogWarning(
                 "Recovering abandoned outbox entry {TransactionId} for stack instance {StackInstanceId}, system instance {SystemInstanceId}",
-                entry.TransactionId,
-                entry.StackInstanceId,
-                entry.SystemInstanceId);
-
-            var stackInstanceId = (ulong)entry.StackInstanceId;
-            var systemInstanceId = (ulong)entry.SystemInstanceId;
-
-            var stackInstance = await stackInstanceStore.Read(stackInstanceId);
-            if (stackInstance is null)
-            {
-                logger.LogWarning("Stack instance {StackInstanceId} not found during outbox sweep", stackInstanceId);
-                continue;
-            }
-
-            var tenant = await tenantStore.Read(stackInstance.TenantId);
-            if (tenant is null)
-            {
-                logger.LogWarning("Tenant {TenantId} not found during outbox sweep", stackInstance.TenantId);
-                continue;
-            }
-
-            var desiredState = await desiredStateStore.Read(stackInstanceId, systemInstanceId);
-            if (desiredState is null)
-            {
-                logger.LogWarning("Desired state not found for stack {StackInstanceId}, system {SystemInstanceId} during outbox sweep", stackInstanceId, systemInstanceId);
-                continue;
-            }
-
-            var waasContext = new WaasContext<SharedWebspaceData>
-            {
-                TransactionId = entry.TransactionId,
-                Tenant = tenant,
-                StackInstance = (StackInstance)stackInstance,
-                DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
-            };
+                context.TransactionId,
+                stackInstanceId,
+                systemInstanceId);
 
             var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
@@ -119,7 +112,7 @@ public class WorkflowExecutor(
             try
             {
                 await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-                    (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(waasContext),
+                    (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(context),
                     new WorkflowUpdateWithStartOptions(startOperation)
                     {
                         Rpc = new() { CancellationToken = stoppingToken },
@@ -128,12 +121,10 @@ public class WorkflowExecutor(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to dispatch recovered workflow update for transaction {TransactionId}", entry.TransactionId);
+                logger.LogError(ex, "Failed to dispatch recovered workflow update for transaction {TransactionId}", context.TransactionId);
             }
         }
 
         await transaction.CommitAsync(stoppingToken);
     }
-
-    private sealed record OutboxEntry(string TransactionId, long StackInstanceId, long SystemInstanceId);
 }

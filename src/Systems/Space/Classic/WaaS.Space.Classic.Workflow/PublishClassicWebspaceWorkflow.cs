@@ -83,35 +83,27 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     }
 
     [WorkflowUpdate]
-    public async Task<WaasContext<SharedWebspaceData>> PublishDesiredState(WaasContext<SharedWebspaceData> waasContext)
+    public async Task<ProcessingContext<SharedWebspaceData>> PublishDesiredState(ProcessingContext<SharedWebspaceData> context)
     {
         _closed = false;
 
-        waasContext = await Workflow.ExecuteActivityAsync(
-            (WaasActivities<SharedWebspaceData> act) => act.ReadWaasContext(waasContext.TransactionId, stackInstanceId, systemInstanceId),
-            new()
-            {
-                StartToCloseTimeout = TimeSpan.FromSeconds(10)
-            }
-        );
+        Workflow.Logger.LogInformation("Got WaaS context: {TransactionId}, Stack ID: {StackInstanceId}", context.TransactionId, stackInstanceId);
 
-        Workflow.Logger.LogInformation("Got WaaS context: {TransactionId}, Stack ID: {StackInstanceId}", waasContext.TransactionId, stackInstanceId);
-
-        waasContext = await Workflow.ExecuteActivityAsync(
-            (ClassicWebspaceActivities act) => act.SendToTechMw(waasContext),
+        context = await Workflow.ExecuteActivityAsync(
+            (ClassicWebspaceActivities act) => act.SendToTechMw(context),
             new()
             {
                 StartToCloseTimeout = TimeSpan.FromSeconds(15)
             }
         );
 
-        Workflow.Logger.LogInformation("Sent WaaS context to Tech MW: {TransactionId}, Stack ID: {StackInstanceId}", waasContext.TransactionId, stackInstanceId);
+        Workflow.Logger.LogInformation("Sent WaaS context to Tech MW: {TransactionId}, Stack ID: {StackInstanceId}", context.TransactionId, stackInstanceId);
 
-        _pending.Add(waasContext.TransactionId);
+        _pending.Add(context.TransactionId);
 
-        _queue.Enqueue(waasContext);
+        _queue.Enqueue(context);
 
-        return waasContext;
+        return context;
     }
 
     [WorkflowSignal]

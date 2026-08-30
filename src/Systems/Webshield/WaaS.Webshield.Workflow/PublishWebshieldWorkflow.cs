@@ -42,7 +42,7 @@ public class PublishWebshieldWorkflow
     }
 
     [WorkflowSignal]
-    public async Task ReceiveBackendNotification(string transactionId, string node)
+    public async Task ReceiveNodeAck(string transactionId, string node)
     {
         if (_pendingNodes.Remove(node))
             _acknowledgedNodes.Add(node);

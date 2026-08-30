@@ -12,7 +12,7 @@ public class ClassicWebspaceActivities(
 )
 {
     [Activity]
-    public async Task<WaasContext<SharedWebspaceData>> SendToTechMw(WaasContext<SharedWebspaceData> waasContext)
+    public async Task<ProcessingContext<SharedWebspaceData>> SendToTechMw(ProcessingContext<SharedWebspaceData> waasContext)
     {
         try
         {

@@ -67,12 +67,12 @@ public class SpaceChangeTests
     [Fact]
     public void Compare_Space_ReportsGeneratedIdentifiersThatWereNotPinned()
     {
-        // WaasResource seeds ReferenceId and CorrelationId with fresh GUIDs, so two independently
+        // WaasResource seeds ReferenceId, CorrelationId, and Created with fresh values, so two independently
         // constructed instances differ. Real callers compare a stored state against a proposed one, where
         // these are carried over; this documents that the diff sees whatever the serializer sees.
         var changes = Changes.Between(new SpaceResource(), new SpaceResource(), SpaceKeys);
 
-        Assert.Equal(["CorrelationId", "ReferenceId"], changes.Keys.Order());
+        Assert.Equal(["CorrelationId", "Created", "ReferenceId"], changes.Keys.Order());
     }
 
     [Fact]
@@ -96,6 +96,7 @@ public class SpaceChangeTests
     {
         ReferenceId = "space-1",
         CorrelationId = "correlation-1",
+        Created = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         State = "unknown",
         Region = "eu-central",
         Owner = new Owner { Uid = 1000, Gid = 1000, Username = "web1", Groupname = "web" },

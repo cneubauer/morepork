@@ -15,5 +15,7 @@ public class WaasResource
     /// </summary>
     public string CorrelationId { get; set; } = Guid.NewGuid().ToString();
 
+    public DateTime Created { get; set; } = DateTime.UtcNow;
+
     public override string ToString() => ReferenceId;
 }

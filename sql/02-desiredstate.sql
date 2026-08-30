@@ -18,9 +18,7 @@ CREATE INDEX ON desired_state (next_check);
 CREATE INDEX ON desired_state (tenant, state_namespace, state_zone, stack_instance_id, state_version DESC) WHERE expired IS NULL;
 
 CREATE TABLE outbox (
-    transaction_id VARCHAR(255) NOT NULL PRIMARY KEY,
-    stack_instance_id BIGINT NOT NULL,
-    system_instance_id BIGINT NOT NULL DEFAULT 0,
+    context jsonb NOT NULL,
     created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
     -- The scheduling request owns this entry until the lease expires. Recovery only claims
     -- entries whose owner never started the workflow, i.e. crashed before the lease ran out.

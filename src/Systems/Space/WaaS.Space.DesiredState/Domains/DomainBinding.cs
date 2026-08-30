@@ -1,4 +1,5 @@
-﻿using WaaS.Common.DesiredState;
+﻿using WaaS.Common.Comparison;
+using WaaS.Common.DesiredState;
 using WaaS.Persistence;
 
 namespace WaaS.Space.DesiredState;
@@ -10,7 +11,7 @@ public class DomainBinding<TEnvironment> : WaasResource, IDomainBinding
     /// </summary>
     public ulong? DomainId { get; set; }
 
-    [LookupKey(LookupResourceKeyType.DomainName)]
+    [ListItemKeyAttribute]
     public string DomainName { get; set; } = "";
 
     /// <summary>

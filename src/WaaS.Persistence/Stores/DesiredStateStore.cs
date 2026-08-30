@@ -1,4 +1,7 @@
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using WaaS.Common.Comparison;
 
 namespace WaaS.Persistence;
 
@@ -9,6 +12,15 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         .GetCustomAttribute<DesiredStateDataAttribute>()?
         .Namespace
         ?? throw new InvalidOperationException($"Desired State '{typeof(TDesiredState).FullName}' is missing the DesiredStateDataAttribute.");
+
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters =
+        {
+            new JsonStringEnumConverter(),
+        }
+    };
 
     private const string ReadSql = """
         SELECT
@@ -322,20 +334,15 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         );
     }
 
-    public async Task Schedule(NpgsqlTransaction transaction, string transactionId, ulong stackInstanceId, ulong systemInstanceId)
+    public async Task Schedule<TContext>(NpgsqlTransaction transaction, TContext context)
     {
-        var sql = """
-            INSERT INTO outbox (transaction_id, stack_instance_id, system_instance_id, leased_until)
-            VALUES (@TransactionId, @StackInstanceId, @SystemInstanceId, now() + interval '1 minute')
-            ON CONFLICT (transaction_id)
-                DO UPDATE SET leased_until = EXCLUDED.leased_until;
-            """;
+        var sql = "INSERT INTO outbox (context) VALUES (@Context::jsonb);";
+
+        var json = JsonSerializer.Serialize(context, _jsonOptions);
 
         await transaction.Connection.ExecuteAsync(sql, new
         {
-            TransactionId = transactionId,
-            StackInstanceId = (long)stackInstanceId,
-            SystemInstanceId = (long)systemInstanceId,
+            Context = json
         }, transaction);
     }
 
@@ -345,7 +352,11 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         await connection.OpenAsync();
 
         await connection.ExecuteAsync(
-            "DELETE FROM outbox WHERE transaction_id = @TransactionId;",
+            """
+            DELETE FROM outbox
+            WHERE context->>'transactionId' = @TransactionId
+               OR context->>'TransactionId' = @TransactionId;
+            """,
             new { TransactionId = transactionId });
     }
 
