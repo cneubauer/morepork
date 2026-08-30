@@ -211,13 +211,13 @@ public class ObjectComparerTests
         var changes = oldObj.CompareTo(newObj);
 
         Assert.Single(changes);
-        var change = Assert.IsAssignableFrom<IListChange<ItemWithKey>>(changes[0]);
+        var change = Assert.IsAssignableFrom<IListChange>(changes[0]);
         Assert.Equal(ChangeKind.List, change.Kind);
         Assert.Equal(ListChangeType.Added, change.ChangeType);
         Assert.Equal("Items[Key=k2]", change.Path);
         Assert.Equal("k2", change.ItemKey);
         Assert.NotNull(change.Item);
-        Assert.Equal("v2", change.Item.Value);
+        Assert.Equal("v2", ((ItemWithKey)change.Item).Value);
     }
 
     [Fact]
@@ -240,13 +240,13 @@ public class ObjectComparerTests
         var changes = oldObj.CompareTo(newObj);
 
         Assert.Single(changes);
-        var change = Assert.IsAssignableFrom<IListChange<ItemWithKey>>(changes[0]);
+        var change = Assert.IsAssignableFrom<IListChange>(changes[0]);
         Assert.Equal(ChangeKind.List, change.Kind);
         Assert.Equal(ListChangeType.Removed, change.ChangeType);
         Assert.Equal("Items[Key=k2]", change.Path);
         Assert.Equal("k2", change.ItemKey);
         Assert.NotNull(change.Item);
-        Assert.Equal("v2", change.Item.Value);
+        Assert.Equal("v2", ((ItemWithKey)change.Item).Value);
     }
 
     [Fact]
@@ -398,10 +398,104 @@ public class ObjectComparerTests
         Assert.Equal("unknown", stateChange.OldValue);
         Assert.Equal("active", stateChange.NewValue);
 
-        var keyChange = changes.OfType<IListChange<SshPublicKey>>().FirstOrDefault();
+        var keyChange = changes.OfType<IListChange>().FirstOrDefault();
         Assert.NotNull(keyChange);
         Assert.Equal(ListChangeType.Added, keyChange.ChangeType);
         Assert.Equal("SshPublicKeys[Data=BBBBKeyData2==]", keyChange.Path);
         Assert.Equal("BBBBKeyData2==", keyChange.ItemKey);
+    }
+
+    [Fact]
+    public void Serialize_ChangesContainingListChangeAndPropertyChange_SerializesAndDeserializesSuccessfully()
+    {
+        var oldObj = new KeyedCollectionModel
+        {
+            Items = [new ItemWithKey { Key = "k1", Value = "v1" }]
+        };
+        var newObj = new KeyedCollectionModel
+        {
+            Items =
+            [
+                new ItemWithKey { Key = "k1", Value = "v2" },
+                new ItemWithKey { Key = "k2", Value = "v3" }
+            ]
+        };
+
+        var changes = oldObj.CompareTo(newObj);
+        var json = System.Text.Json.JsonSerializer.Serialize(changes);
+        var deserialized = System.Text.Json.JsonSerializer.Deserialize<IReadOnlyList<IChange>>(json);
+
+        Assert.NotNull(deserialized);
+        Assert.Equal(2, deserialized.Count);
+
+        var propChange = Assert.IsAssignableFrom<PropertyChange>(deserialized.First(c => c.Kind == ChangeKind.Property));
+        Assert.Equal("Items[Key=k1].Value", propChange.Path);
+        Assert.Equal("Value", propChange.PropertyName);
+
+        var listChange = Assert.IsAssignableFrom<ListChange>(deserialized.First(c => c.Kind == ChangeKind.List));
+        Assert.Equal("Items[Key=k2]", listChange.Path);
+        Assert.Equal(ListChangeType.Added, listChange.ChangeType);
+    }
+
+    [Fact]
+    public void Serialize_DomainBindingChanges_SerializesSuccessfully()
+    {
+        var refId = Guid.NewGuid().ToString();
+        var corrId = Guid.NewGuid().ToString();
+        var created = DateTime.UtcNow;
+
+        var oldDomains = new List<DomainBinding<string>>
+        {
+            new() { ReferenceId = refId, CorrelationId = corrId, Created = created, DomainId = 1, DomainName = "old.com", IsEnabled = true }
+        };
+        var newDomains = new List<DomainBinding<string>>
+        {
+            new() { ReferenceId = refId, CorrelationId = corrId, Created = created, DomainId = 1, DomainName = "old.com", IsEnabled = true },
+            new() { DomainId = 2, DomainName = "new.com", IsEnabled = true }
+        };
+
+        var changes = oldDomains.CompareTo(newDomains);
+        var json = System.Text.Json.JsonSerializer.Serialize(changes);
+        var deserialized = System.Text.Json.JsonSerializer.Deserialize<IReadOnlyList<IChange>>(json);
+
+        Assert.NotNull(deserialized);
+        Assert.Single(deserialized);
+        var listChange = Assert.IsAssignableFrom<ListChange>(deserialized[0]);
+        Assert.Equal(ListChangeType.Added, listChange.ChangeType);
+    }
+
+    [Fact]
+    public void Serialize_ProcessingContextWithChanges_SerializesSuccessfully()
+    {
+        var oldDomains = new List<DomainBinding<string>>
+        {
+            new() { DomainId = 1, DomainName = "foo.de", IsEnabled = true }
+        };
+        var newDomains = new List<DomainBinding<string>>
+        {
+            new() { DomainId = 1, DomainName = "foo.de", IsEnabled = true },
+            new() { DomainId = 2, DomainName = "bar.de", IsEnabled = true }
+        };
+
+        var changes = oldDomains.CompareTo(newDomains);
+
+        var context = new WaaS.Common.Workflow.ProcessingContext<WaaS.Space.Classic.DesiredState.SharedWebspaceData>
+        {
+            TransactionId = "tx-123",
+            Tenant = new WaaS.Persistence.Tenant { Id = 1, Name = "Demo Tenant" },
+            StackInstance = new WaaS.Persistence.StackInstance { Id = 1234567, TenantId = 1, Zone = 1 },
+            DesiredState = new WaaS.Persistence.DesiredState<WaaS.Space.Classic.DesiredState.SharedWebspaceData>
+            {
+                StackInstanceId = 1234567,
+                Tenant = 1,
+                Zone = 1,
+                TransactionId = "tx-123",
+                Data = new WaaS.Space.Classic.DesiredState.SharedWebspaceData()
+            },
+            Changes = changes
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(context);
+        Assert.Contains("\"$changeType\":\"list\"", json);
     }
 }

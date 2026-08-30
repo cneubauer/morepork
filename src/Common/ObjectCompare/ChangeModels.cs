@@ -46,10 +46,6 @@ public interface IListChange : IChange
     string? ItemTypeName { get; }
 }
 
-public interface IListChange<out T> : IListChange
-{
-    new T? Item { get; }
-}
 
 public record PropertyChange(
     string Path,
@@ -79,15 +75,3 @@ public record ListChange(
         $"[List:{ChangeType}] {Path} (Key: {ItemKey ?? "<null>"}, Type: {ItemTypeName ?? Item?.GetType().Name ?? "unknown"})";
 }
 
-public record ListChange<T>(
-    string Path,
-    ListChangeType ChangeType,
-    object? ItemKey,
-    T? Item,
-    string? ItemTypeName = null
-) : ListChange(Path, ChangeType, ItemKey, Item, ItemTypeName ?? typeof(T).Name), IListChange<T>
-{
-    new public T? Item => (T?)base.Item;
-
-    public override string ToString() => base.ToString();
-}

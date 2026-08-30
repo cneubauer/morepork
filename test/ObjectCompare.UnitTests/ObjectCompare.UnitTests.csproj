@@ -12,6 +12,7 @@
     <ProjectReference Include="..\..\src\Systems\Space\Classic\WaaS.Space.Classic.ViewModel\WaaS.Space.Classic.ViewModel.csproj" />
     <ProjectReference Include="..\..\src\Systems\Webshield\WaaS.Webshield.ProtoBuf\WaaS.Webshield.ProtoBuf.csproj" />
     <ProjectReference Include="..\..\src\Common\WaaS.Common.Workflow\WaaS.Common.Workflow.csproj" />
+    <ProjectReference Include="..\..\src\WaaS.Persistence\WaaS.Persistence.csproj" />
     <ProjectReference Include="..\..\src\WaaS.WebApi\WaaS.WebApi.csproj" />
   </ItemGroup>
 
