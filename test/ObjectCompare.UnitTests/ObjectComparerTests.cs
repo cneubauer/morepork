@@ -498,4 +498,58 @@ public class ObjectComparerTests
         var json = System.Text.Json.JsonSerializer.Serialize(context);
         Assert.Contains("\"$changeType\":\"list\"", json);
     }
+
+    [Fact]
+    public void Compare_KeyedDomainBindings_ProducesGenericIListChange()
+    {
+        var refId = Guid.NewGuid().ToString();
+        var corrId = Guid.NewGuid().ToString();
+        var created = DateTime.UtcNow;
+
+        var oldDomains = new List<DomainBinding<string>>
+        {
+            new() { ReferenceId = refId, CorrelationId = corrId, Created = created, DomainId = 1, DomainName = "old.com", IsEnabled = true }
+        };
+        var newDomains = new List<DomainBinding<string>>
+        {
+            new() { ReferenceId = refId, CorrelationId = corrId, Created = created, DomainId = 1, DomainName = "old.com", IsEnabled = true },
+            new() { DomainId = 2, DomainName = "new.com", IsEnabled = true }
+        };
+
+        var changes = oldDomains.CompareTo(newDomains);
+
+        var genericChange = changes.OfType<IListChange<DomainBinding<string>>>().FirstOrDefault();
+        Assert.NotNull(genericChange);
+        Assert.Equal(ListChangeType.Added, genericChange.ChangeType);
+        Assert.NotNull(genericChange.Item);
+        Assert.Equal("new.com", genericChange.Item.DomainName);
+    }
+
+    [Fact]
+    public void OfListType_OnJsonDeserializedChanges_ReturnsTypedItems()
+    {
+        var refId = Guid.NewGuid().ToString();
+        var corrId = Guid.NewGuid().ToString();
+        var created = DateTime.UtcNow;
+
+        var oldDomains = new List<DomainBinding<string>>
+        {
+            new() { ReferenceId = refId, CorrelationId = corrId, Created = created, DomainId = 1, DomainName = "old.com", IsEnabled = true }
+        };
+        var newDomains = new List<DomainBinding<string>>
+        {
+            new() { ReferenceId = refId, CorrelationId = corrId, Created = created, DomainId = 1, DomainName = "old.com", IsEnabled = true },
+            new() { DomainId = 2, DomainName = "new.com", IsEnabled = true }
+        };
+
+        var changes = oldDomains.CompareTo(newDomains);
+        var json = System.Text.Json.JsonSerializer.Serialize(changes);
+        var deserialized = System.Text.Json.JsonSerializer.Deserialize<IReadOnlyList<IChange>>(json)!;
+
+        var typedChanges = deserialized.OfListType<DomainBinding<string>>().ToList();
+        Assert.Single(typedChanges);
+        Assert.Equal(ListChangeType.Added, typedChanges[0].ChangeType);
+        Assert.NotNull(typedChanges[0].Item);
+        Assert.Equal("new.com", typedChanges[0].Item!.DomainName);
+    }
 }

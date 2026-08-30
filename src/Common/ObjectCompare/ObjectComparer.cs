@@ -149,7 +149,7 @@ public static class ObjectComparer
                 if (!oldMap.ContainsKey(key))
                 {
                     var itemPath = $"{collectionPath}[{keyProperty.Name}={key}]";
-                    changes.Add(new ListChange(itemPath, ListChangeType.Added, key, newItem, itemType?.Name));
+                    changes.Add(CreateListChange(itemType!, itemPath, ListChangeType.Added, key, newItem));
                 }
             }
 
@@ -159,7 +159,7 @@ public static class ObjectComparer
                 if (!newMap.ContainsKey(key))
                 {
                     var itemPath = $"{collectionPath}[{keyProperty.Name}={key}]";
-                    changes.Add(new ListChange(itemPath, ListChangeType.Removed, key, oldItem, itemType?.Name));
+                    changes.Add(CreateListChange(itemType!, itemPath, ListChangeType.Removed, key, oldItem));
                 }
             }
 
@@ -197,6 +197,12 @@ public static class ObjectComparer
                 }
             }
         }
+    }
+
+    private static IListChange CreateListChange(Type itemType, string path, ListChangeType changeType, object? key, object item)
+    {
+        var genericType = typeof(ListChange<>).MakeGenericType(itemType);
+        return (IListChange)Activator.CreateInstance(genericType, path, changeType, key, item, itemType.Name)!;
     }
 
     private static Type? GetCollectionItemType(Type collectionType)

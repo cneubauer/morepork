@@ -1,9 +1,12 @@
 namespace WaaS.Space.Classic.Workflow;
 
 using System.Collections.Concurrent;
+using ObjectCompare;
+using SpaceMiddleware;
 using Temporalio.Workflows;
 using WaaS.Common.Workflow;
 using WaaS.Space.Classic.DesiredState;
+using WaaS.Space.DesiredState;
 using WaaS.Webshield.Workflow;
 
 [Workflow]
@@ -14,7 +17,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     private readonly HashSet<string> _pending = [];
     private readonly HashSet<string> _acknowledged = [];
 
-    private readonly ConcurrentQueue<WaasContext<SharedWebspaceData>> _queue = [];
+    private readonly ConcurrentQueue<ProcessingContext<SharedWebspaceData>> _queue = [];
 
     [WorkflowQuery]
     public IReadOnlyCollection<string> InFlightTransactions => [.. _pending];
@@ -27,42 +30,51 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     {
         while (!_closed)
         {
-            if (!_queue.TryDequeue(out var waasContext))
+            if (!_queue.TryDequeue(out var context))
             {
                 await Workflow.WaitConditionAsync(() => !_queue.IsEmpty || _closed);
                 continue;
             }
 
-            Workflow.Logger.LogInformation("Processing transaction {TransactionId} for stack instance {StackInstanceId} and system instance {SystemInstanceId}", waasContext.TransactionId, stackInstanceId, systemInstanceId);
+            Workflow.Logger.LogInformation("Processing transaction {TransactionId} for stack instance {StackInstanceId} and system instance {SystemInstanceId}", context.TransactionId, stackInstanceId, systemInstanceId);
             
-            // TODO: Determine webshield mappings patch
-            var mappingsToAdd = new List<WebshieldMapping>
+            var destination = context.DesiredState.Data.Webspace.Hostname ?? "";
+
+            var mappingsToAdd = context.Changes
+                .OfListType<DomainBinding<string>>()
+                .Where(x => x.ChangeType == ListChangeType.Added && x.Item is not null)
+                .Select(x => new WebshieldMapping(x.Item.DomainName, destination))
+                .ToList();
+
+            var mappingsToRemove = context.Changes
+                .OfListType<DomainBinding<string>>()
+                .Where(x => x.ChangeType == ListChangeType.Removed && x.Item is not null)
+                .Select(x => x.Item.DomainName)
+                .ToList();
+
+            if (mappingsToAdd.Count > 0 || mappingsToRemove.Count > 0)
             {
-                new("example.com", waasContext.DesiredState.Data.Webspace.Hostname!, true)
-            };
+                var webshieldContext = await Workflow.ExecuteActivityAsync(
+                    (WebshieldActivities act) => act.PatchWebshieldMappings(context, mappingsToAdd, mappingsToRemove),
+                    new()
+                    {
+                        StartToCloseTimeout = TimeSpan.FromSeconds(15),
+                        TaskQueue = "webshield"
+                    }
+                );
 
-            var mappingsToRemove = new List<WebshieldMapping>();
-
-            var webshieldContext = await Workflow.ExecuteActivityAsync(
-                (WebshieldActivities act) => act.PatchWebshieldMappings(waasContext, mappingsToAdd, mappingsToRemove),
-                new()
-                {
-                    StartToCloseTimeout = TimeSpan.FromSeconds(15),
-                    TaskQueue = "webshield"
-                }
-            );
-
-            var webshieldWorkflow = Workflow.ExecuteChildWorkflowAsync(
-                (PublishWebshieldWorkflow workflow) => workflow.StartPublishingWebshieldMappings(webshieldContext),
-                new()
-                {
-                    Id = $"webshield-{waasContext.TransactionId}",
-                    TaskQueue = "webshield",
-                }
-            );
+                var webshieldWorkflow = Workflow.ExecuteChildWorkflowAsync(
+                    (PublishWebshieldWorkflow workflow) => workflow.StartPublishingWebshieldMappings(webshieldContext),
+                    new()
+                    {
+                        Id = $"webshield-{context.TransactionId}",
+                        TaskQueue = "webshield",
+                    }
+                );
+            }
 
             var updateProductDns = Workflow.ExecuteActivityAsync(
-                (ClassicWebspaceActivities act) => act.UpdateProductDns(waasContext),
+                (ClassicWebspaceActivities act) => act.UpdateProductDns(context),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(15)
@@ -74,7 +86,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 updateProductDns
             );
 
-            Workflow.Logger.LogInformation("Product DNS for transaction {TransactionId} and stack instance {StackInstanceId} has been updated", waasContext.TransactionId, stackInstanceId);
+            Workflow.Logger.LogInformation("Product DNS for transaction {TransactionId} and stack instance {StackInstanceId} has been updated", context.TransactionId, stackInstanceId);
         }
 
         await Workflow.WaitConditionAsync(() => Workflow.AllHandlersFinished);

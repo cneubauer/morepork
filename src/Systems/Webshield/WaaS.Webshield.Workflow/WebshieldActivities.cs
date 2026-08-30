@@ -3,6 +3,8 @@ using WaaS.Persistence;
 
 namespace WaaS.Webshield.Workflow;
 
+public record WebshieldMapping(string Domain, string Destination);
+
 public class WebshieldActivities(
     ISslProxyRepository sslProxyRepository,
     IRabbitMqPublisher statePublisher,
@@ -43,7 +45,7 @@ public class WebshieldActivities(
     public async Task<WaasContext<WebshieldData>> PatchWebshieldMappings(
         WaasContext waasContext,
         List<WebshieldMapping> mappingsToAdd,
-        List<WebshieldMapping> mappingsToRemove
+        List<string> mappingsToRemove
     )
     {
         await using var transaction = await webshieldDesiredStateStore.BeginTransaction();
@@ -65,10 +67,12 @@ public class WebshieldActivities(
 
         var existingMappings = webshieldDesiredState.Data.Mappings;
 
-        foreach (var mapping in mappingsToRemove)
+        foreach (var domain in mappingsToRemove)
         {
-            if (string.IsNullOrWhiteSpace(mapping.Domain))
+            if (string.IsNullOrWhiteSpace(domain))
                 continue;
+
+            existingMappings.RemoveAll(x => mappingsToRemove.Contains(x.Domain));
         }
 
         foreach (var mapping in mappingsToAdd)
@@ -82,7 +86,6 @@ public class WebshieldActivities(
             if (existingMapping is not null)
             {
                 existingMapping.Destination = mapping.Destination;
-                existingMapping.IsEnabled = mapping.IsEnabled;
             }
             else
             {
@@ -92,7 +95,6 @@ public class WebshieldActivities(
                     Destination = mapping.Destination,
                     Mode = ModeType.Proxy,
                     WebshieldType = WebshieldType.Default,
-                    IsEnabled = mapping.IsEnabled,
                 });
             }
         }
