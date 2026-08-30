@@ -68,6 +68,9 @@ services:
       context: ./mocks/webspace-middleware
     ports:
       - "8081:8081"
+    environment:
+      WAAS_API_URL: "http://waas-api:8080"
+      ACK_DELAY_MS: "2000"
     # No shell in the image beyond BusyBox and no curl, so probe with node itself.
     healthcheck:
       test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:8081/_mock/webspaces', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
@@ -120,7 +123,6 @@ services:
       RabbitMq__Username: "${RABBITMQ_USER}"
       RabbitMq__Password: "${RABBITMQ_PASSWORD}"
       Webshield__NodeFqdns: "some-de-webshield-node-1.server.lan,some-de-webshield-node-2.server.lan"
-      Webshield__AckDelayMs: "1000"
     depends_on:
       rabbitmq:
         condition: service_healthy

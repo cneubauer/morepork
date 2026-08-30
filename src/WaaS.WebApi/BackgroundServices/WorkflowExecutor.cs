@@ -1,15 +1,6 @@
 using Dapper;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
 using Npgsql;
 using Temporalio.Api.Enums.V1;
-using Temporalio.Client;
-using WaaS.Common.Workflow;
-using WaaS.Persistence;
-using WaaS.Space.Classic.DesiredState;
-using WaaS.Space.Classic.Workflow;
 
 namespace WaaS.WebApi;
 

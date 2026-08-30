@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Temporalio.Client;
-using WaaS.Space.Classic.Workflow;
 
 namespace WaaS.WebApi;
 

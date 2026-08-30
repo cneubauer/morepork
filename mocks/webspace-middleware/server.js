@@ -11,6 +11,8 @@ const http = require('node:http');
 
 const port = Number(process.env.PORT ?? 8081);
 const host = process.env.HOST ?? '0.0.0.0';
+const waasApiBaseUrl = (process.env.WAAS_API_URL || process.env.WAAS_API_BASE_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+const ackDelayMs = Number(process.env.ACK_DELAY_MS ?? 2000);
 
 // resource_id -> webspace document
 const webspaces = new Map();
@@ -145,6 +147,34 @@ function readJsonBody(request) {
     });
 }
 
+function scheduleActualStateNotification(extReference, extCorrelation) {
+    if (!extReference || !extCorrelation) return;
+
+    const parts = String(extReference).split('-');
+    if (parts.length < 2) return;
+
+    const resourceId = `webspace-${parts[0]}-${parts[1]}`;
+    const transactionId = String(extCorrelation);
+
+    setTimeout(() => {
+        sendActualStateNotification(resourceId, transactionId);
+    }, ackDelayMs);
+}
+
+async function sendActualStateNotification(resourceId, transactionId) {
+    const targetUrl = `${waasApiBaseUrl}/api/actual-state/${encodeURIComponent(resourceId)}/${encodeURIComponent(transactionId)}`;
+    console.log(`[mock-ack] Sending actual-state ACK after ${ackDelayMs}ms delay to ${targetUrl}`);
+    try {
+        const res = await fetch(targetUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        console.log(`[mock-ack] Actual-state ACK to ${targetUrl} completed with HTTP ${res.status}`);
+    } catch (err) {
+        console.error(`[mock-ack] Failed sending actual-state ACK to ${targetUrl}: ${err.message}`);
+    }
+}
+
 function createWebspace(response, tenant, body) {
     const externalReference = body.ext_reference;
 
@@ -170,6 +200,7 @@ function createWebspace(response, tenant, body) {
     }
 
     console.log(`[create] ${tenant}/webspaces/${id} ext_reference=${externalReference ?? '-'}`);
+    scheduleActualStateNotification(externalReference, body.ext_correlation);
     return sendJson(response, 202, withActualState(webspace));
 }
 
@@ -186,6 +217,7 @@ function updateWebspace(response, tenant, id, body) {
     webspaces.set(id, webspace);
 
     console.log(`[update] ${tenant}/webspaces/${id}`);
+    scheduleActualStateNotification(body.ext_reference ?? webspace.ext_reference, body.ext_correlation);
     return sendJson(response, 202, withActualState(webspace));
 }
 

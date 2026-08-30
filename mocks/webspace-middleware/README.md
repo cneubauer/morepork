@@ -73,3 +73,21 @@ empty, so error handling paths need a different fake.
 
 State is in-memory and resets on restart. There is no authentication; the spec's `BasicAuth` and
 `Keystone` security schemes are not enforced.
+
+## ActualState Notifications
+
+When a `POST` or `PUT` webspace publish request is accepted (`202 Accepted`), the mock asynchronously schedules an actual-state ACK notification after 2 seconds (`ACK_DELAY_MS`):
+
+```http
+PUT /api/actual-state/webspace-{stackInstanceId}-{systemInstanceId}/{transactionId}
+```
+
+This signals the waiting `PublishClassicWebspaceWorkflow` via `WaaS.WebApi`'s `ActualStateController`, allowing the Temporal workflow to complete reconciliation and mark the desired state transaction as applied.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `PORT` | `8081` | HTTP port the mock listens on |
+| `HOST` | `0.0.0.0` | Host interface to bind |
+| `WAAS_API_URL` | `http://127.0.0.1:5000` | Base URL of WaaS API (in docker: `http://waas-api:8080`) |
+| `ACK_DELAY_MS` | `2000` | Delay in milliseconds before sending the ActualState notification |
+
