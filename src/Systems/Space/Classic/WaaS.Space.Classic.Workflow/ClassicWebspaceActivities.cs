@@ -12,32 +12,32 @@ public class ClassicWebspaceActivities(
 )
 {
     [Activity]
-    public async Task<ProcessingContext<SharedWebspaceData>> SendToTechMw(ProcessingContext<SharedWebspaceData> waasContext)
+    public async Task<ProcessingContext<SharedWebspaceData>> SendToTechMw(ProcessingContext<SharedWebspaceData> context)
     {
         try
         {
             var desiredState = await webspaceMiddlewareService.Publish(
-                waasContext.Tenant.Name,
-                waasContext.StackInstance,
-                waasContext.DesiredState,
-                waasContext.TransactionId
+                context.Tenant.Name,
+                context.StackInstance,
+                context.DesiredState,
+                context.TransactionId
             );
 
-        var saveResult = await desiredStateStore.Save(desiredState, desiredState.TransactionId, force: true);
+            var saveResult = await desiredStateStore.Save(desiredState, desiredState.TransactionId, force: true);
 
-            return waasContext with
+            return context with
             {
                 DesiredState = (DesiredState<SharedWebspaceData>)saveResult.Current,
             };
         }
         catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.BadRequest or System.Net.HttpStatusCode.NotFound)
         {
-            logger.LogError(ex, "Permanent failure communicating with TechMW for transaction {TransactionId}", waasContext.TransactionId);
+            logger.LogError(ex, "Permanent failure communicating with TechMW for transaction {TransactionId}", context.TransactionId);
             throw new ApplicationFailureException($"TechMW rejected request: {ex.Message}", ex, nonRetryable: true);
         }
         catch (Exception ex) when (ex is not ApplicationFailureException)
         {
-            logger.LogWarning(ex, "Transient failure communicating with TechMW for transaction {TransactionId}, Temporal will retry", waasContext.TransactionId);
+            logger.LogWarning(ex, "Transient failure communicating with TechMW for transaction {TransactionId}, Temporal will retry", context.TransactionId);
             throw;
         }
     }

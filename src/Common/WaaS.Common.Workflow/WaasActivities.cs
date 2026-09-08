@@ -35,7 +35,14 @@ public class WaasActivities<TDesiredState>(
     }
 
     [Activity]
-    public async Task SendNotification(string transactionId)
+    public async Task SendIntermidiateNotification(string transactionId)
+    {
+        logger.LogInformation("Emitting completion notification for transaction {TransactionId}", transactionId);
+        await Task.CompletedTask;
+    }
+
+    [Activity]
+    public async Task SendFinalAckNotification(string transactionId)
     {
         logger.LogInformation("Emitting completion notification for transaction {TransactionId}", transactionId);
         await Task.CompletedTask;

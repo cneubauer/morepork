@@ -70,7 +70,7 @@ services:
       - "8081:8081"
     environment:
       WAAS_API_URL: "http://waas-api:8080"
-      ACK_DELAY_MS: "2000"
+      ACK_DELAY_MS: 2000
     # No shell in the image beyond BusyBox and no curl, so probe with node itself.
     healthcheck:
       test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:8081/_mock/webspaces', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
@@ -105,6 +105,7 @@ services:
       RabbitMq__Hostname: "rabbitmq"
       RabbitMq__Username: "${RABBITMQ_USER}"
       RabbitMq__Password: "${RABBITMQ_PASSWORD}"
+      Webshield__AckDelayMs: 5000
     depends_on:
       postgres:
         condition: service_healthy

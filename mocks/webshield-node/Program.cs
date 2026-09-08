@@ -36,7 +36,7 @@ var nodesConfig = Environment.GetEnvironmentVariable("Webshield__NodeFqdns")
 
 var nodes = nodesConfig.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-var delayMs = int.TryParse(Environment.GetEnvironmentVariable("Webshield__AckDelayMs"), out var d) ? d : 1000;
+var delayMs = int.TryParse(Environment.GetEnvironmentVariable("Webshield__AckDelayMs"), out var d) ? d : 5000;
 
 Console.WriteLine($"[WebshieldMock] Connecting to RabbitMQ at {host}:{port} (vhost: {vhost})...");
 

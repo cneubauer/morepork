@@ -34,7 +34,7 @@ public class PublishWebshieldWorkflow
         );
 
         await Workflow.ExecuteActivityAsync(
-            (WaasActivities<WebshieldData> act) => act.SendNotification(context.TransactionId),
+            (WaasActivities<WebshieldData> act) => act.SendIntermidiateNotification(context.TransactionId),
             WorkflowActivityDefaults.Quick
         );
 
