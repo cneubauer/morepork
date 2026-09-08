@@ -2,6 +2,7 @@ namespace WaaS.Space.Classic.Workflow;
 
 using System.Collections.Concurrent;
 using ObjectCompare;
+using Temporalio.Exceptions;
 using Temporalio.Workflows;
 using WaaS.Common.Workflow;
 using WaaS.Space.Classic.DesiredState;
@@ -23,6 +24,23 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
 
     [WorkflowQuery]
     public IReadOnlyCollection<string> AcknowledgedTransactions => [.. _acknowledged];
+
+
+    [WorkflowUpdateValidator(nameof(PublishDesiredState))]
+    public void ValidatePublishDesiredState(ProcessingContext<SharedWebspaceData> context)
+    {
+        if (_queue.Count >= 5)
+            throw new ApplicationFailureException(
+                $"Too many update for resource. Try again later",
+                errorType: "QueueFull",
+                nonRetryable: true);
+
+        if (Workflow.CurrentHistoryLength > 40_000)
+            throw new ApplicationFailureException(
+                "Workflow history limit approaching. Retry later.",
+                errorType: "HistoryLimit",
+                nonRetryable: true);
+    }
 
     [WorkflowRun]
     public async Task<IReadOnlyCollection<string>> PublishClassicWebspace(ulong stackInstanceId, ulong systemInstanceId)
@@ -118,6 +136,10 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     public async Task<ProcessingContext<SharedWebspaceData>> PublishDesiredState(ProcessingContext<SharedWebspaceData> context)
     {
         _closed = false;
+
+        Workflow.UpsertTypedSearchAttributes(
+            SearchAttributes.Tenant.ValueSet(context.Tenant.Name)
+        );
 
         Workflow.Logger.LogInformation(
             "Publishing new Desired State version for Stack Instance {StackInstanceId} System Instance {SystemInstanceId} [{TransactionId}]",
