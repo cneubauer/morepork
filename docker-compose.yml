@@ -48,6 +48,20 @@ services:
     ports:
       - "8080:8080"
 
+  temporal-setup:
+    image: temporalio/auto-setup
+    depends_on:
+      temporal:
+        condition: service_healthy
+    entrypoint: >
+      temporal operator search-attribute create
+        --address temporal:7233
+        --name Tenant --type Keyword
+        --name SystemInstanceId --type Int
+        --name StackInstanceId --type Int
+        --name StateNamespace --type Keyword
+    restart: "no"
+
   rabbitmq:
     image: rabbitmq:4-management-alpine
     environment:

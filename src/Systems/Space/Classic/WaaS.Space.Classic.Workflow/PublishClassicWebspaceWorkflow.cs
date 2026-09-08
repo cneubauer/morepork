@@ -27,6 +27,12 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     [WorkflowRun]
     public async Task<IReadOnlyCollection<string>> PublishClassicWebspace(ulong stackInstanceId, ulong systemInstanceId)
     {
+        Workflow.UpsertTypedSearchAttributes(
+            SearchAttributes.StackInstanceId.ValueSet((long)stackInstanceId),
+            SearchAttributes.SystemInstanceId.ValueSet((long)systemInstanceId),
+            SearchAttributes.StateNamespace.ValueSet("ClassicWebspace")
+        );
+
         while (!_closed)
         {
             if (!_queue.TryDequeue(out var context))
