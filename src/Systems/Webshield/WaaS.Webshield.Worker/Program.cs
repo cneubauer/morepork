@@ -39,7 +39,7 @@ builder.Services
     .AddHostedTemporalWorker(
         builder.Configuration["Temporal:TargetHost"]!,
         WorkflowDefinitions.ClientNamespace,
-        "webshield")
+        PublishWebshieldWorkflow.DefaultTaskQueue)
     .AddScopedActivities<WaasActivities<WebshieldData>>()
     .AddScopedActivities<WebshieldActivities>()
     .AddWorkflow<PublishWebshieldWorkflow>();

@@ -1,6 +1,5 @@
 namespace WaaS.Webshield.Workflow;
 
-using Microsoft.Extensions.Logging;
 using Temporalio.Workflows;
 using WaaS.Common.Workflow;
 using WaaS.Webshield.DesiredState;
@@ -8,6 +7,8 @@ using WaaS.Webshield.DesiredState;
 [Workflow]
 public class PublishWebshieldWorkflow
 {
+    public const string DefaultTaskQueue = "webshield";
+
     private readonly HashSet<string> _pendingNodes = [];
     private readonly HashSet<string> _acknowledgedNodes = [];
 
