@@ -86,10 +86,12 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
 
             tasks.Add(updateProductDns);
 
+            // Wait for child workflows to finish
             await Workflow.WhenAllAsync(tasks);
 
             Workflow.Logger.LogInformation("Product DNS for transaction {TransactionId} and stack instance {StackInstanceId} has been updated", context.TransactionId, stackInstanceId);
 
+            // Wait for TechMW notification to arrive
             await Workflow.WaitConditionAsync(() => _acknowledged.Contains(context.TransactionId));
 
             await Workflow.ExecuteLocalActivityAsync(
@@ -112,9 +114,9 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
         _closed = false;
 
         Workflow.Logger.LogInformation(
-            "Publishing new Desired State version for {StackInstanceId} {SystemInstanceId} [{TransactionId}]",
-            context.TransactionId,
+            "Publishing new Desired State version for Stack Instance {StackInstanceId} System Instance {SystemInstanceId} [{TransactionId}]",
             stackInstanceId,
+            systemInstanceId,
             context.TransactionId
         );
 
@@ -136,6 +138,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     [WorkflowSignal]
     public async Task ReceiveBackendNotification(string transactionId)
     {
+        if (!_pending.Contains(transactionId)) return;
+
         var includedTransactions = _pending
             .TakeWhile(x => x != transactionId)
             .Append(transactionId)
@@ -152,7 +156,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             );
 
             await Workflow.ExecuteLocalActivityAsync(
-                (WaasActivities<SharedWebspaceData> act) => act.SendIntermidiateNotification(transaction),
+                (WaasActivities<SharedWebspaceData> act) => act.SendIntermediateNotification(transaction),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(10)
