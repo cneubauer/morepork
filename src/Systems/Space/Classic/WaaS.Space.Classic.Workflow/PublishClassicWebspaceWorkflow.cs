@@ -61,7 +61,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
 
             Workflow.Logger.LogInformation("Processing transaction {TransactionId} for stack instance {StackInstanceId} and system instance {SystemInstanceId}", context.TransactionId, stackInstanceId, systemInstanceId);
             
-            var destination = context.DesiredState.Data.Webspace.Hostname ?? "";
+            var destination = context.DesiredState.Data.Webspace.Hostname
+                ?? throw new ApplicationFailureException("Hostname is required", errorType: "InvalidState", nonRetryable: true);
 
             var mappingsToAdd = context.Changes
                 .OfListType<DomainBinding<string>>()
@@ -84,7 +85,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                     new()
                     {
                         StartToCloseTimeout = TimeSpan.FromSeconds(15),
-                        TaskQueue = "webshield"
+                        TaskQueue = PublishWebshieldWorkflow.DefaultTaskQueue
                     }
                 );
 
@@ -93,7 +94,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                     new()
                     {
                         Id = $"webshield-{context.TransactionId}",
-                        TaskQueue = "webshield",
+                        TaskQueue = PublishWebshieldWorkflow.DefaultTaskQueue,
                     }
                 );
 
@@ -104,7 +105,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 (ClassicWebspaceActivities act) => act.UpdateProductDns(context),
                 new()
                 {
-                    StartToCloseTimeout = TimeSpan.FromSeconds(15)
+                    StartToCloseTimeout = TimeSpan.FromSeconds(15),
+                    Summary = "Updating product DNS",
                 }
             );
 
@@ -122,7 +124,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 (WaasActivities<SharedWebspaceData> act) => act.SendFinalAckNotification(context.TransactionId),
                 new()
                 {
-                    StartToCloseTimeout = TimeSpan.FromSeconds(10)
+                    StartToCloseTimeout = TimeSpan.FromSeconds(10),
+                    Summary = "Sending final ACK notification",
                 }
             );
         }
@@ -152,7 +155,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             (ClassicWebspaceActivities act) => act.SendToTechMw(context),
             new()
             {
-                StartToCloseTimeout = TimeSpan.FromSeconds(15)
+                StartToCloseTimeout = TimeSpan.FromSeconds(15),
+                Summary = "Sending Desired State to TechMW",
             }
         );
 
@@ -179,7 +183,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 (ClassicWebspaceActivities act) => act.MarkAsApplied(transaction),
                 new()
                 {
-                    StartToCloseTimeout = TimeSpan.FromSeconds(10)
+                    StartToCloseTimeout = TimeSpan.FromSeconds(10),
+                    Summary = "Marking Desired State as applied",
                 }
             );
 
@@ -187,7 +192,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 (WaasActivities<SharedWebspaceData> act) => act.SendIntermediateNotification(transaction),
                 new()
                 {
-                    StartToCloseTimeout = TimeSpan.FromSeconds(10)
+                    StartToCloseTimeout = TimeSpan.FromSeconds(10),
+                    Summary = "Sending intermediate notification",
                 }
             );
 

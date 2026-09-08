@@ -35,6 +35,28 @@ public class ClassicWebspaceController(
     {
         transactionId ??= $"{Guid.NewGuid()}";
 
+        var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
+
+        #region Rate Limit based on workflow queue
+        // try
+        // {
+        //     var pending = await temporalClient
+        //         .GetWorkflowHandle<PublishClassicWebspaceWorkflow>(resourceId)
+        //         .QueryAsync(wf => wf.PendingTransactions);
+
+        //     if (pending.Count >= MaxQueueDepth)
+        //     {
+        //         Response.Headers.RetryAfter = "5";
+        //         return StatusCode(StatusCodes.Status503ServiceUnavailable,
+        //             new { Error = "Too many in-flight transactions for this webspace." });
+        //     }
+        // }
+        // catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        // {
+        //     // No run yet — nothing queued.
+        // }
+        #endregion
+
         #region Validate
 
         var tenantEntity = await tenantStore.Get(tenant);
@@ -86,8 +108,6 @@ public class ClassicWebspaceController(
         #endregion
 
         #region Dispath Workflow
-
-        var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
         var startOperation = WithStartWorkflowOperation.Create(
             (PublishClassicWebspaceWorkflow workflow) => workflow.PublishClassicWebspace(stackInstanceId, systemInstanceId),
