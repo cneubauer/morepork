@@ -87,7 +87,7 @@ public class ClassicWebspaceController(
         if (webspace.MailConfiguration is not null)
             credentials = credentials.Append(webspace.MailConfiguration);
 
-        var passwordTokenChanges = await passwordService.ConvertCredentials(tenant, stackInstanceId, systemInstanceId, credentials);
+        await passwordService.ConvertCredentials(tenant, stackInstanceId, systemInstanceId, webspace);
 
         #endregion
 
@@ -106,14 +106,6 @@ public class ClassicWebspaceController(
 
         var saveResult = await desiredStateStore.Save(transaction, desiredState, transactionId);
         desiredState = saveResult.Current;
-
-        saveResult = saveResult with
-        {
-            Changes = saveResult.Changes
-                .Concat(passwordTokenChanges)
-                .AsList()
-                .AsReadOnly(),
-        };
 
         var context = new ProcessingContext<SharedWebspaceData>
         {

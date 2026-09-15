@@ -121,6 +121,15 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             await Workflow.WaitConditionAsync(() => _acknowledged.Contains(context.TransactionId));
 
             await Workflow.ExecuteLocalActivityAsync(
+                (WaasActivities<SharedWebspaceData> act) => act.CleanupPasswordTokens(context.TransactionId, stackInstanceId, systemInstanceId, context.DesiredState.Data.Webspace),
+                new()
+                {
+                    StartToCloseTimeout = TimeSpan.FromSeconds(15),
+                    Summary = "Cleaning up password tokens",
+                }
+            );
+
+            await Workflow.ExecuteLocalActivityAsync(
                 (WaasActivities<SharedWebspaceData> act) => act.SendFinalAckNotification(context.TransactionId),
                 new()
                 {

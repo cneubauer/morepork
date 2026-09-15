@@ -3,12 +3,15 @@ namespace WaaS.Common.Workflow;
 using Microsoft.Extensions.Logging;
 using Temporalio.Activities;
 using Temporalio.Exceptions;
+using WaaS.Common.DesiredState;
+using WaaS.Common.ViewModel;
 using WaaS.Persistence;
 
 public class WaasActivities<TDesiredState>(
     IStackInstanceStore stackInstanceStore,
     ITenantStore tenantStore,
     IDesiredStateStore<TDesiredState> desiredStateStore,
+    PasswordService passwordService,
     ILogger<WaasActivities<TDesiredState>> logger
 ) where TDesiredState : class, IDesiredStateData, new()
 {
@@ -32,6 +35,12 @@ public class WaasActivities<TDesiredState>(
             Tenant = tenant,
             DesiredState = (DesiredState<TDesiredState>)desiredState,
         };
+    }
+
+    [Activity]
+    public async Task CleanupPasswordTokens(string transactionId, ulong stackInstanceId, ulong systemInstanceId, ICredentialContainer credentials)
+    {
+        await passwordService.CleanupPasswordTokens(transactionId, stackInstanceId, systemInstanceId, credentials);
     }
 
     [Activity]

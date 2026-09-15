@@ -1,8 +1,9 @@
+using WaaS.Common.ViewModel;
 using WaaS.Space.ViewModel;
 
 namespace WaaS.Space.Classic.ViewModel;
 
-public class SharedWebspace : Space.ViewModel.Space
+public class SharedWebspace : Space.ViewModel.Space, ICredentials
 {
     /// <summary>
     /// Platform-provided metadata for this shared webspace.
@@ -33,6 +34,18 @@ public class SharedWebspace : Space.ViewModel.Space
     /// Scheduled cron jobs.
     /// </summary>
     public List<CronTab>? CronTabs { get; set; }
+
+    public IEnumerable<Credential> GetCredentials()
+    {
+        var credentials = Enumerable.Empty<Credential>()
+            .Concat(Accounts ?? [])
+            .Concat(AdminAccounts ?? []);
+        
+        if (MailConfiguration is not null)
+            credentials = credentials.Append(MailConfiguration);
+
+        return credentials;
+    }
 
     public void Tombstone()
     {

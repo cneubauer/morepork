@@ -1,40 +1,29 @@
 using System.Reflection;
-using ObjectCompare;
+using WaaS.Common.DesiredState;
 using WaaS.Common.ViewModel;
 
-namespace WaaS.WebApi;
+namespace WaaS.Common.Workflow;
 
 record PasswordStoreResponse(string Token);
-
-public record PasswordTokenChange(PasswordType PasswordType, string? OldToken, string? NewToken) : IChange
-{
-    public string Path => "Credential.PasswordToken";
-    public ChangeKind Kind => ChangeKind.Property;
-}
-
 
 public class PasswordService(IHttpClientFactory httpClientFactory)
 {
     private readonly HttpClient _httpClient = httpClientFactory.CreateClient("PasswordStore");
 
-    public async Task<IReadOnlyList<PasswordTokenChange>> ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<Credential> credentials)
+    public async Task ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, ICredentials credentials)
     {
         var tasks = credentials
+            .GetCredentials()
+            .Where(credential => credential.Password is not null)
             .Select(credential => ConvertCredential(tenant, stackInstanceId, systemInstanceId, credential));
 
-        var results = await Task.WhenAll(tasks);
-
-        return results
-            .Where(x => x is not null)
-            .Cast<PasswordTokenChange>()
-            .ToList()
-            .AsReadOnly();
+        await Task.WhenAll(tasks);
     }
 
-    public async Task<PasswordTokenChange?> ConvertCredential(string tenant, ulong stackInstanceId, ulong systemInstanceId, Credential credential)
+    public async Task ConvertCredential(string tenant, ulong stackInstanceId, ulong systemInstanceId, Credential credential)
     {
         if (credential.Password is null)
-            return null;
+            return;
 
         var systemType = credential.Password
             .GetType()
@@ -61,17 +50,28 @@ public class PasswordService(IHttpClientFactory httpClientFactory)
 
         var newToken = tokenResult?.Token ?? throw new InvalidOperationException("Unexpected response from Password Store.");
 
-        var result = new PasswordTokenChange(systemType, credential.PasswordToken, newToken);
-        
         credential.PasswordToken = newToken;
         credential.Reset();
-
-        return result;
     }
 
     public async Task DeletePasswordToken(string tenant, PasswordType systemType, string token)
     {
         var response = await _httpClient.DeleteAsync($"/credential/v2/{tenant}/systemtype/{systemType}/token/{token}");
+        response.EnsureSuccessStatusCode();
+    }
+    
+    public async Task CleanupPasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, ICredentialContainer container)
+    {
+        var remainingPasswordTokens = container
+            .GetCredentials()
+            .Where(credential => credential.SecurePasswordToken is not null)
+            .Select(x => x.SecurePasswordToken!);
+        
+        var response = await _httpClient.PutAsJsonAsync($"/credential/v2/{tenant}/stack-instance/{stackInstanceId}/system-instance/{systemInstanceId}/cleanup", new
+        {
+            exclude = remainingPasswordTokens,
+        });
+
         response.EnsureSuccessStatusCode();
     }
 }
