@@ -14,8 +14,8 @@ using WaaS.Webshield.Workflow;
 public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemInstanceId)
 {
     private bool _closed = false;
-    private readonly SortedSet<string> _pending = [];
-    private readonly SortedSet<string> _acknowledged = [];
+    private readonly List<string> _pending = [];
+    private readonly List<string> _acknowledged = [];
 
     private readonly ConcurrentQueue<ProcessingContext<SharedWebspaceData>> _queue = [];
 
@@ -51,7 +51,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             SearchAttributes.StateNamespace.ValueSet("ClassicWebspace")
         );
 
-        while (!_closed)
+        while (!_closed && !_queue.IsEmpty)
         {
             if (!_queue.TryDequeue(out var context))
             {
