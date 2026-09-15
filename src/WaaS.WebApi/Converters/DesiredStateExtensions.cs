@@ -11,6 +11,9 @@ public static class DesiredStateExtensions
                 Host = viewModel.MailConfiguration.Host,
                 Hostport = viewModel.MailConfiguration.HostPort ?? 0,
                 Username = viewModel.MailConfiguration.Username ?? "",
+                SecurePasswordToken = viewModel.MailConfiguration.PasswordToken ?? "",
+                DefaultEnvelopeFromPolicy = viewModel.MailConfiguration.DefaultEnvelopeFromPolicy,
+                DefaultSender = viewModel.MailConfiguration.DefaultSender,
             };
 
         foreach (var domainViewModel in viewModel.Domains ?? [])
@@ -27,6 +30,19 @@ public static class DesiredStateExtensions
                 });
         }
 
+        foreach (var account in viewModel.Accounts ?? [])
+        {
+            var existingAccount = desiredState.Accounts.FirstOrDefault(x => x.Username == account.Username);
+
+            if (existingAccount is not null)
+                existingAccount.Apply(account);
+            else
+                desiredState.Accounts.Add(new()
+                {
+                    SecurePasswordToken = account.PasswordToken ?? "",
+                });
+        }
+
         var domains = viewModel.Domains?.Select(x => x.Domain) ?? [];
         desiredState.Domains.RemoveAll(x => !domains.Contains(x.DomainName));
     }
@@ -34,5 +50,10 @@ public static class DesiredStateExtensions
     private static void Apply(this DomainBinding<string> desiredState, Space.Classic.ViewModel.DomainBinding viewModel)
     {
         desiredState.Environment = viewModel.Environment;
+    }
+
+    private static void Apply(this Space.DesiredState.Account desiredState, Space.ViewModel.Account viewModel)
+    {
+        desiredState.SecurePasswordToken = viewModel.PasswordToken ?? "";
     }
 }

@@ -6,10 +6,8 @@ namespace WaaS.Common.Workflow;
 
 record PasswordStoreResponse(string Token);
 
-public class PasswordService(IHttpClientFactory httpClientFactory)
+public class PasswordService(HttpClient httpClient)
 {
-    private readonly HttpClient _httpClient = httpClientFactory.CreateClient("PasswordStore");
-
     public async Task ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, ICredentials credentials)
     {
         var tasks = credentials
@@ -25,13 +23,14 @@ public class PasswordService(IHttpClientFactory httpClientFactory)
         if (credential.Password is null)
             return;
 
-        var systemType = credential.Password
+        var systemType = credential
             .GetType()
-            .GetCustomAttribute<PasswordTypeAttribute>(true)?
+            .GetProperty(nameof(Credential.Password))?
+            .GetCustomAttribute<PasswordTypeAttribute>()?
             .PasswordType
             ?? throw new InvalidOperationException("Password type could not be determined.");
 
-        var response = await _httpClient.PutAsJsonAsync($"credential/v2/{tenant}/systemtype/{systemType}/token", new
+        var response = await httpClient.PutAsJsonAsync($"credential/v2/{tenant}/systemtype/{systemType}/token", new
         {
             passwordInfo = new
             {
@@ -56,20 +55,15 @@ public class PasswordService(IHttpClientFactory httpClientFactory)
 
     public async Task DeletePasswordToken(string tenant, PasswordType systemType, string token)
     {
-        var response = await _httpClient.DeleteAsync($"/credential/v2/{tenant}/systemtype/{systemType}/token/{token}");
+        var response = await httpClient.DeleteAsync($"credential/v2/{tenant}/systemtype/{systemType}/token/{token}");
         response.EnsureSuccessStatusCode();
     }
     
-    public async Task CleanupPasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, ICredentialContainer container)
+    public async Task CleanupPasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<string> excludeTokens)
     {
-        var remainingPasswordTokens = container
-            .GetCredentials()
-            .Where(credential => credential.SecurePasswordToken is not null)
-            .Select(x => x.SecurePasswordToken!);
-        
-        var response = await _httpClient.PutAsJsonAsync($"/credential/v2/{tenant}/stack-instance/{stackInstanceId}/system-instance/{systemInstanceId}/cleanup", new
+        var response = await httpClient.PutAsJsonAsync($"credential/v2/{tenant}/stack-instance/{stackInstanceId}/system-instance/{systemInstanceId}/cleanup", new
         {
-            exclude = remainingPasswordTokens,
+            exclude = excludeTokens,
         });
 
         response.EnsureSuccessStatusCode();

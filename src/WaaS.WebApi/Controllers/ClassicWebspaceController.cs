@@ -79,14 +79,6 @@ public class ClassicWebspaceController(
 
         #region Convert Credential
 
-        var credentials = Enumerable.Empty<Credential>();
-
-        if (webspace.Accounts is not null)
-            credentials = credentials.Concat(webspace.Accounts);
-
-        if (webspace.MailConfiguration is not null)
-            credentials = credentials.Append(webspace.MailConfiguration);
-
         await passwordService.ConvertCredentials(tenant, stackInstanceId, systemInstanceId, webspace);
 
         #endregion

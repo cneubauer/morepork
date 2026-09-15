@@ -13,7 +13,6 @@ using WaaS.Webshield.Workflow;
 [method:WorkflowInit]
 public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemInstanceId)
 {
-    private bool _closed = false;
     private readonly List<string> _pending = [];
     private readonly List<string> _acknowledged = [];
 
@@ -51,11 +50,13 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             SearchAttributes.StateNamespace.ValueSet("ClassicWebspace")
         );
 
-        while (!_closed && !_queue.IsEmpty)
+        while (!_queue.IsEmpty || _pending.Count > 0)
         {
             if (!_queue.TryDequeue(out var context))
             {
-                await Workflow.WaitConditionAsync(() => !_queue.IsEmpty || _closed);
+                await Workflow.WaitConditionAsync(() => !_queue.IsEmpty || _pending.Count == 0);
+                if (_queue.IsEmpty && _pending.Count == 0)
+                    break;
                 continue;
             }
 
@@ -118,10 +119,27 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             Workflow.Logger.LogInformation("Product DNS for transaction {TransactionId} and stack instance {StackInstanceId} has been updated", context.TransactionId, stackInstanceId);
 
             // Wait for TechMW notification to arrive
-            await Workflow.WaitConditionAsync(() => _acknowledged.Contains(context.TransactionId));
+            var acked = await Workflow.WaitConditionAsync(
+                () => _acknowledged.Contains(context.TransactionId),
+                TimeSpan.FromSeconds(60)
+            );
+
+            if (!acked)
+            {
+                throw new ApplicationFailureException(
+                    $"Timed out waiting for backend actual-state acknowledgment for transaction {context.TransactionId}",
+                    errorType: "BackendAckTimeout",
+                    nonRetryable: true);
+            }
+
+            var remainingTokens = context.DesiredState.Data.Webspace
+                .GetCredentials()
+                .Where(x => !string.IsNullOrEmpty(x.SecurePasswordToken))
+                .Select(x => x.SecurePasswordToken!)
+                .ToList();
 
             await Workflow.ExecuteLocalActivityAsync(
-                (WaasActivities<SharedWebspaceData> act) => act.CleanupPasswordTokens(context.TransactionId, stackInstanceId, systemInstanceId, context.DesiredState.Data.Webspace),
+                (WaasActivities<SharedWebspaceData> act) => act.CleanupPasswordTokens(context.Tenant.Name, stackInstanceId, systemInstanceId, remainingTokens),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(15),
@@ -147,8 +165,6 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     [WorkflowUpdate]
     public async Task<ProcessingContext<SharedWebspaceData>> PublishDesiredState(ProcessingContext<SharedWebspaceData> context)
     {
-        _closed = false;
-
         Workflow.UpsertTypedSearchAttributes(
             SearchAttributes.Tenant.ValueSet(context.Tenant.Name)
         );
@@ -160,6 +176,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             context.TransactionId
         );
 
+        _pending.Add(context.TransactionId);
+
         context = await Workflow.ExecuteLocalActivityAsync(
             (ClassicWebspaceActivities act) => act.SendToTechMw(context),
             new()
@@ -168,8 +186,6 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 Summary = "Sending Desired State to TechMW",
             }
         );
-
-        _pending.Add(context.TransactionId);
 
         _queue.Enqueue(context);
 
@@ -209,8 +225,5 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             _acknowledged.Add(transaction);
             _pending.Remove(transaction);
         }
-
-        if (_pending.Count == 0)
-            _closed = true;
     }
 }

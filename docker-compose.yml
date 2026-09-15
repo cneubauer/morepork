@@ -100,12 +100,17 @@ services:
       ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Temporal__TargetHost: "temporal:7233"
       WebspaceMiddleware__BaseUrl: "http://webspace-middleware-mock:8081/"
+      PasswordStore__BaseUrl: "http://password-store-mock:8082/"
+      PasswordStore__Username: "developer"
+      PasswordStore__Password: "dev"
     depends_on:
       postgres:
         condition: service_healthy
       temporal:
         condition: service_healthy
       webspace-middleware-mock:
+        condition: service_healthy
+      password-store-mock:
         condition: service_healthy
     restart: on-failure
 
@@ -143,6 +148,17 @@ services:
         condition: service_healthy
     restart: on-failure
 
+  password-store-mock:
+    build:
+      context: ./mocks/password-store
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('node:http').get('http://127.0.0.1:8082/_mock/tokens', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   waas-api:
     build:
       context: .
@@ -150,11 +166,16 @@ services:
     environment:
       ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Temporal__TargetHost: "temporal:7233"
+      PasswordStore__BaseUrl: "http://password-store-mock:8082/"
+      PasswordStore__Username: "developer"
+      PasswordStore__Password: "dev"
     ports:
       - "5000:8080"
     depends_on:
       postgres:
         condition: service_healthy
       temporal:
+        condition: service_healthy
+      password-store-mock:
         condition: service_healthy
     restart: on-failure

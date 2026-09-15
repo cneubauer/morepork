@@ -19,10 +19,16 @@ builder.Services
         serviceProvider => new StackInstanceStore(waasConnectionString)
     )
     .AddDesiredStateStore<SharedWebspaceData>(waasConnectionString)
-    .AddTenantStore(waasConnectionString)
-    .AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Webspace>, WebspaceMiddlewareService>(
+    .AddTenantStore(waasConnectionString);
+
+builder.Services.AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Webspace>, WebspaceMiddlewareService>(
         client => client.BaseAddress = new Uri(builder.Configuration["WebspaceMiddleware:BaseUrl"]
             ?? throw new InvalidOperationException("Missing WebspaceMiddleware:BaseUrl"))
+    );
+
+builder.Services.AddHttpClient<PasswordService>(
+        client => client.BaseAddress = new Uri(builder.Configuration["PasswordStore:BaseUrl"]
+            ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
     );
 
 builder.Services
