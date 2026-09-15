@@ -27,7 +27,7 @@ public class Account : Credential, ITemporary, IValidatableObject
     /// The account password.
     /// </summary>
     /// <example>*****</example>
-    [PasswordType(PasswordType.StretchSpace)]
+    [PasswordType(PasswordType.SharedWebspaceLinux)]
     public override string? Password { get; set; }
 
     /// <summary>

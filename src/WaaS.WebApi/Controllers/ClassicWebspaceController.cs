@@ -1,5 +1,7 @@
+using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Temporalio.Api.Enums.V1;
+using WaaS.Common.ViewModel;
 
 namespace WaaS.WebApi;
 
@@ -9,7 +11,8 @@ public class ClassicWebspaceController(
     ITemporalClient temporalClient,
     ITenantStore tenantStore,
     IStackInstanceStore stackInstanceStore,
-    IDesiredStateStore<SharedWebspaceData> desiredStateStore
+    IDesiredStateStore<SharedWebspaceData> desiredStateStore,
+    PasswordService passwordService
 ) : ControllerBase
 {
     /// <summary>
@@ -74,7 +77,19 @@ public class ClassicWebspaceController(
 
         #endregion
 
-        // TODO: Add credential convertion
+        #region Convert Credential
+
+        var credentials = Enumerable.Empty<Credential>();
+
+        if (webspace.Accounts is not null)
+            credentials = credentials.Concat(webspace.Accounts);
+
+        if (webspace.MailConfiguration is not null)
+            credentials = credentials.Append(webspace.MailConfiguration);
+
+        var passwordTokenChanges = await passwordService.ConvertCredentials(tenant, stackInstanceId, systemInstanceId, credentials);
+
+        #endregion
 
         #region Update Desired State
 
@@ -91,6 +106,14 @@ public class ClassicWebspaceController(
 
         var saveResult = await desiredStateStore.Save(transaction, desiredState, transactionId);
         desiredState = saveResult.Current;
+
+        saveResult = saveResult with
+        {
+            Changes = saveResult.Changes
+                .Concat(passwordTokenChanges)
+                .AsList()
+                .AsReadOnly(),
+        };
 
         var context = new ProcessingContext<SharedWebspaceData>
         {
