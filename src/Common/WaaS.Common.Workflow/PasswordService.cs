@@ -1,5 +1,3 @@
-using System.Reflection;
-using WaaS.Common.DesiredState;
 using WaaS.Common.ViewModel;
 
 namespace WaaS.Common.Workflow;
@@ -8,27 +6,19 @@ record PasswordStoreResponse(string Token);
 
 public class PasswordService(HttpClient httpClient)
 {
-    public async Task ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, ICredentials credentials)
+    public async Task ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<PasswordInfo> passwordInfos)
     {
-        var tasks = credentials
-            .GetCredentials()
-            .Where(credential => credential.Password is not null)
-            .Select(credential => ConvertCredential(tenant, stackInstanceId, systemInstanceId, credential));
+        var tasks = passwordInfos
+            .Where(passwordInfo => passwordInfo.Credential.Password is not null)
+            .Select(passwordInfo => ConvertCredential(tenant, stackInstanceId, systemInstanceId, passwordInfo.Credential, passwordInfo.PasswordType));
 
         await Task.WhenAll(tasks);
     }
 
-    public async Task ConvertCredential(string tenant, ulong stackInstanceId, ulong systemInstanceId, Credential credential)
+    public async Task ConvertCredential(string tenant, ulong stackInstanceId, ulong systemInstanceId, Credential credential, PasswordType systemType)
     {
         if (credential.Password is null)
             return;
-
-        var systemType = credential
-            .GetType()
-            .GetProperty(nameof(Credential.Password))?
-            .GetCustomAttribute<PasswordTypeAttribute>()?
-            .PasswordType
-            ?? throw new InvalidOperationException("Password type could not be determined.");
 
         var response = await httpClient.PutAsJsonAsync($"credential/v2/{tenant}/systemtype/{systemType}/token", new
         {
@@ -49,14 +39,9 @@ public class PasswordService(HttpClient httpClient)
 
         var newToken = tokenResult?.Token ?? throw new InvalidOperationException("Unexpected response from Password Store.");
 
+        // We set the token and reset the password here to ensure it is no longer stored in memory and avoid passing it around unnecessarily.
         credential.PasswordToken = newToken;
         credential.Reset();
-    }
-
-    public async Task DeletePasswordToken(string tenant, PasswordType systemType, string token)
-    {
-        var response = await httpClient.DeleteAsync($"credential/v2/{tenant}/systemtype/{systemType}/token/{token}");
-        response.EnsureSuccessStatusCode();
     }
     
     public async Task CleanupPasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<string> excludeTokens)

@@ -3,7 +3,7 @@ using WaaS.Space.ViewModel;
 
 namespace WaaS.Space.Classic.ViewModel;
 
-public class SharedWebspace : Space.ViewModel.Space, ICredentials
+public class SharedWebspace : Space.ViewModel.Space, IPasswordContainer
 {
     /// <summary>
     /// Platform-provided metadata for this shared webspace.
@@ -35,16 +35,18 @@ public class SharedWebspace : Space.ViewModel.Space, ICredentials
     /// </summary>
     public List<CronTab>? CronTabs { get; set; }
 
-    public IEnumerable<Credential> GetCredentials()
+    public IEnumerable<PasswordInfo> GetPasswordInfos()
     {
-        var credentials = Enumerable.Empty<Credential>()
+        var passwordInfos = Enumerable.Empty<Credential>()
             .Concat(Accounts ?? [])
-            .Concat(AdminAccounts ?? []);
+            .Concat(AdminAccounts ?? [])
+            .Where(x => x.Password is not null)
+            .Select(x => new PasswordInfo(x, PasswordType.SharedWebspaceLinux));
         
-        if (MailConfiguration is not null)
-            credentials = credentials.Append(MailConfiguration);
+        if (MailConfiguration?.Password is not null)
+            passwordInfos = passwordInfos.Append(new PasswordInfo(MailConfiguration, PasswordType.Smtp));
 
-        return credentials;
+        return passwordInfos;
     }
 
     public void Tombstone()

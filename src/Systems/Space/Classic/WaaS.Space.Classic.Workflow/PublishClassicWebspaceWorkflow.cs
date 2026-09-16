@@ -132,11 +132,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                     nonRetryable: true);
             }
 
-            var remainingTokens = context.DesiredState.Data.Webspace
-                .GetCredentials()
-                .Where(x => !string.IsNullOrEmpty(x.SecurePasswordToken))
-                .Select(x => x.SecurePasswordToken!)
-                .ToList();
+            var remainingTokens = context.DesiredState.Data.Webspace.GetPasswordTokens();
 
             await Workflow.ExecuteLocalActivityAsync(
                 (WaasActivities<SharedWebspaceData> act) => act.CleanupPasswordTokens(context.Tenant.Name, stackInstanceId, systemInstanceId, remainingTokens),

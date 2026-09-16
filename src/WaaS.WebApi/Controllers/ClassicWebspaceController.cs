@@ -79,7 +79,7 @@ public class ClassicWebspaceController(
 
         #region Convert Credential
 
-        await passwordService.ConvertCredentials(tenant, stackInstanceId, systemInstanceId, webspace);
+        await passwordService.ConvertCredentials(tenant, stackInstanceId, systemInstanceId, webspace.GetPasswordInfos());
 
         #endregion
 

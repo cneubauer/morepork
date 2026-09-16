@@ -34,7 +34,6 @@ public class MailConfiguration : Credential, IValidatableObject
     /// The password for authenticating with the mail server.
     /// </summary>
     /// <example>*****</example>
-    [PasswordType(PasswordType.Smtp)]
     public override string? Password { get; set; }
 
     /// <summary>

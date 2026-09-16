@@ -11,9 +11,3 @@ public enum PasswordType
     Smtp = 300,
     WebAnalytics = 350
 }
-
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-public sealed class PasswordTypeAttribute(PasswordType passwordType) : Attribute
-{
-    public PasswordType PasswordType { get; } = passwordType;
-}
