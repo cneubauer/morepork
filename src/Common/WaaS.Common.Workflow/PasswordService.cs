@@ -1,52 +1,63 @@
+using System.Text.Json;
 using WaaS.Common.ViewModel;
 
 namespace WaaS.Common.Workflow;
 
-record PasswordStoreResponse(string Token);
+record TokenInfo(string ReferenceId, string Token);
+record TokensResponse(TokenInfo[] Tokens);
 
 public class PasswordService(HttpClient httpClient)
 {
-    public async Task ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<PasswordInfo> passwordInfos)
+    private static readonly JsonSerializerOptions _jsonOptions = new()
     {
-        var tasks = passwordInfos
-            .Where(passwordInfo => passwordInfo.Credential.Password is not null)
-            .Select(passwordInfo => ConvertCredential(tenant, stackInstanceId, systemInstanceId, passwordInfo.Credential, passwordInfo.PasswordType));
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
 
-        await Task.WhenAll(tasks);
-    }
+    };
 
-    public async Task ConvertCredential(string tenant, ulong stackInstanceId, ulong systemInstanceId, Credential credential, PasswordType systemType)
+    public async Task<IEnumerable<string>> ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<PasswordInfo> passwordInfos)
     {
-        if (credential.Password is null)
-            return;
+        var passwordsToConvert = passwordInfos
+            .Where(passwordInfo => passwordInfo.Credential.Password is not null);
 
-        var response = await httpClient.PutAsJsonAsync($"credential/v2/{tenant}/systemtype/{systemType}/token", new
+        var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens", new
         {
-            passwordInfo = new
+            passwordInfos = passwordsToConvert.Select(x => new
             {
-                password = credential.Password,
-            },
-            ownerData = new
-            {
-                stackInstanceId,
-                systemInstanceId,
-            }
-        });
+                referenceId = x.ReferenceId,
+                password = x.Credential.Password,
+                systemType = x.PasswordType,
+                owner = new
+                {
+                    stackInstanceId,
+                    systemInstanceId,
+                }
+            }),
+        }, _jsonOptions);
 
         response.EnsureSuccessStatusCode();
         
-        var tokenResult = await response.Content.ReadFromJsonAsync<PasswordStoreResponse>();
+        var tokenResult = await response.Content.ReadFromJsonAsync<TokensResponse>()
+            ?? throw new InvalidOperationException("Unexpected response from Password Store.");
 
-        var newToken = tokenResult?.Token ?? throw new InvalidOperationException("Unexpected response from Password Store.");
+        foreach (var passwordInfo in passwordsToConvert)
+        {
+            var token = tokenResult
+                .Tokens
+                .FirstOrDefault(x => x.ReferenceId == passwordInfo.ReferenceId)?
+                .Token
+                ?? throw new InvalidOperationException($"Token for reference ID '{passwordInfo.ReferenceId}' not found.");
+            
+            passwordInfo.Credential.PasswordToken = token;
+            passwordInfo.Credential.Reset();
+        }
 
-        // We set the token and reset the password here to ensure it is no longer stored in memory and avoid passing it around unnecessarily.
-        credential.PasswordToken = newToken;
-        credential.Reset();
+        return tokenResult.Tokens.Select(x => x.Token);
     }
     
-    public async Task CleanupPasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<string> excludeTokens)
+    public async Task CleanupPasswordTokens(string tenant, IEnumerable<string> excludeTokens)
     {
-        var response = await httpClient.PutAsJsonAsync($"credential/v2/{tenant}/stack-instance/{stackInstanceId}/system-instance/{systemInstanceId}/cleanup", new
+        var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens/cleanup", new
         {
             exclude = excludeTokens,
         });

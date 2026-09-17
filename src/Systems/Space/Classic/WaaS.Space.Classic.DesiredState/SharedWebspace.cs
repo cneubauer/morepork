@@ -49,6 +49,9 @@ public class SharedWebspace : Space.DesiredState.Space, IWebspace, IPasswordToke
         if (MailConfiguration is not null)
             credentials = credentials.Append(MailConfiguration);
 
+        if (WebAnalytics is not null)
+            credentials = credentials.Append(WebAnalytics);
+
         return credentials
             .Where(x => !string.IsNullOrEmpty(x.SecurePasswordToken))
             .Select(x => x.SecurePasswordToken!);

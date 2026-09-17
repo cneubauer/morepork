@@ -46,6 +46,9 @@ public class SharedWebspace : Space.ViewModel.Space, IPasswordContainer
         if (MailConfiguration?.Password is not null)
             passwordInfos = passwordInfos.Append(new PasswordInfo(MailConfiguration, PasswordType.Smtp));
 
+        if (WebAnalytics?.Password is not null)
+            passwordInfos = passwordInfos.Append(new PasswordInfo(WebAnalytics, PasswordType.WebAnalytics));
+
         return passwordInfos;
     }
 

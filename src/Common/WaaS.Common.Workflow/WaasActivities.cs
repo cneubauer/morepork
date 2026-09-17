@@ -38,9 +38,9 @@ public class WaasActivities<TDesiredState>(
     }
 
     [Activity]
-    public async Task CleanupPasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<string> excludeTokens)
+    public async Task CleanupPasswordTokens(string tenant, IEnumerable<string> excludeTokens)
     {
-        await passwordService.CleanupPasswordTokens(tenant, stackInstanceId, systemInstanceId, excludeTokens);
+        await passwordService.CleanupPasswordTokens(tenant, excludeTokens);
     }
 
     [Activity]
