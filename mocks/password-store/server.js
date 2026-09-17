@@ -1,26 +1,18 @@
 // Mock of the Password Store API.
 //
 // Endpoints used by PasswordService:
-//   PUT    /credential/v2/{tenant}/systemtype/{systemType}/token
-//            -> Converts plaintext password into a token
-//   DELETE /credential/v2/{tenant}/systemtype/{systemType}/token/{token}
-//            -> Revokes/deletes a token
-//   PUT    /credential/v2/{tenant}/stack-instance/{stackInstanceId}/system-instance/{systemInstanceId}/cleanup
-//            -> Deletes all tokens for the stack/system instance except the excluded ones
+//   PUT  /credential/v3/{tenant}/tokens
+//          -> Converts a batch of plaintext passwords into tokens
+//   PUT  /credential/v3/{tenant}/tokens/cleanup
+//          -> Deletes all tokens of the tenant except the excluded ones
 //
 // Additional inspection and debug endpoints:
-//   GET    /credential/v2/{tenant}/systemtype/{systemType}/token/{token}
-//            -> Reads token details (including password)
-//   GET    /_mock/tokens
-//            -> Returns all stored tokens (used by Docker healthcheck)
-//   GET    /_mock/tokens/{token}
-//            -> Inspects a single stored token
-//   POST   /_mock/reset
-//            -> Resets mock back to initial seeded state
-//   GET    /_mock/config
-//            -> Returns current mock config (failStatus, latencyMs)
-//   POST   /_mock/config
-//            -> Updates failStatus and latencyMs at runtime
+//   GET  /_mock/tokens
+//          -> Returns all stored tokens (used by Docker healthcheck)
+//   GET  /_mock/tokens/{token}
+//          -> Inspects a single stored token
+//   POST /_mock/reset
+//          -> Resets mock back to initial seeded state
 //
 // State is in-memory only and resets on restart.
 
@@ -33,9 +25,6 @@ const host = process.env.HOST ?? '0.0.0.0';
 const authUsername = process.env.AUTH_USERNAME || '';
 const authPassword = process.env.AUTH_PASSWORD || '';
 
-let currentFailStatus = process.env.FAIL_STATUS ? Number(process.env.FAIL_STATUS) : null;
-let currentLatencyMs = Number(process.env.LATENCY_MS ?? 0);
-
 // token -> token record
 const tokens = new Map();
 
@@ -43,41 +32,38 @@ const tokens = new Map();
 const SEEDED_TOKENS = [
     {
         token: '03axxx755ddfab6b8b0dc5e005926a99',
+        referenceId: '5c9392216d3e486f956b8e7b079f2c36',
         tenant: 'demo',
-        systemType: 'SharedWebspaceLinux',
-        ownerData: {
+        systemType: 100, // SharedWebspaceLinux
+        owner: {
             stackInstanceId: '1234567',
             systemInstanceId: '5001234567',
         },
-        passwordInfo: {
-            password: 'seeded-account-password-1',
-        },
+        password: 'seeded-account-password-1',
         createdAt: '2026-07-14T10:06:47.495Z',
     },
     {
         token: '818xxxfcbbaa449f99dd9dc81ecc55cd',
+        referenceId: 'bd075fa6bdb8434d99dcb6b5e7acd570',
         tenant: 'demo',
-        systemType: 'SharedWebspaceLinux',
-        ownerData: {
+        systemType: 100, // SharedWebspaceLinux
+        owner: {
             stackInstanceId: '1234567',
             systemInstanceId: '5001234567',
         },
-        passwordInfo: {
-            password: 'seeded-account-password-2',
-        },
+        password: 'seeded-account-password-2',
         createdAt: '2026-07-14T10:06:47.495Z',
     },
     {
         token: 'ca6xxx3feb5842baaad3fae7123428f',
+        referenceId: 'mailconfiguration',
         tenant: 'demo',
-        systemType: 'Smtp',
-        ownerData: {
+        systemType: 300, // Smtp
+        owner: {
             stackInstanceId: '1234567',
             systemInstanceId: '5001234567',
         },
-        passwordInfo: {
-            password: 'seeded-mail-password',
-        },
+        password: 'seeded-mail-password',
         createdAt: '2026-07-14T10:06:47.495Z',
     },
 ];
@@ -90,12 +76,11 @@ function seed() {
     console.log(`[seed] Seeded ${tokens.size} tokens`);
 }
 
-function sendJson(response, statusCode, body, headers = {}) {
+function sendJson(response, statusCode, body) {
     const payload = JSON.stringify(body, null, 2);
     response.writeHead(statusCode, {
         'content-type': 'application/json',
         'content-length': Buffer.byteLength(payload),
-        ...headers,
     });
     response.end(payload);
 }
@@ -155,77 +140,70 @@ function generateToken() {
     return crypto.randomUUID().replace(/-/g, '');
 }
 
-function handleConvertCredential(response, tenant, systemType, body) {
-    const password = body?.passwordInfo?.password;
-    if (password === undefined || password === null) {
-        return sendError(response, 400, 'Missing password in passwordInfo', ['password is required']);
+function handleConvertCredentials(response, tenant, body) {
+    const passwordInfos = body?.passwordInfos;
+    if (!Array.isArray(passwordInfos)) {
+        return sendError(response, 400, 'Missing passwordInfos', ['passwordInfos must be an array']);
     }
 
-    const token = generateToken();
-    const ownerData = {
-        stackInstanceId: body?.ownerData?.stackInstanceId !== undefined ? String(body.ownerData.stackInstanceId) : null,
-        systemInstanceId: body?.ownerData?.systemInstanceId !== undefined ? String(body.ownerData.systemInstanceId) : null,
-    };
+    const errors = passwordInfos.flatMap((passwordInfo, index) => {
+        const problems = [];
+        if (!passwordInfo?.referenceId) {
+            problems.push(`passwordInfos[${index}].referenceId is required`);
+        }
+        if (passwordInfo?.password === undefined || passwordInfo?.password === null) {
+            problems.push(`passwordInfos[${index}].password is required`);
+        }
+        return problems;
+    });
 
-    const record = {
-        token,
-        tenant,
-        systemType,
-        ownerData,
-        passwordInfo: {
-            password: String(password),
-        },
-        createdAt: new Date().toISOString(),
-    };
-
-    tokens.set(token, record);
-    console.log(`[convert] Generated token=${token} for tenant=${tenant} systemType=${systemType} stackInstanceId=${ownerData.stackInstanceId ?? '-'}`);
-
-    return sendJson(response, 200, { token });
-}
-
-function handleDeleteToken(response, tenant, systemType, token) {
-    const record = tokens.get(token);
-    if (!record) {
-        return sendError(response, 404, `Token '${token}' not found`);
+    if (errors.length > 0) {
+        return sendError(response, 400, 'Invalid passwordInfos', errors);
     }
 
-    tokens.delete(token);
-    console.log(`[delete] Deleted token=${token} for tenant=${tenant} systemType=${systemType}`);
-    return sendJson(response, 200, { token, deleted: true });
+    const created = passwordInfos.map(passwordInfo => {
+        const token = generateToken();
+        tokens.set(token, {
+            token,
+            referenceId: String(passwordInfo.referenceId),
+            tenant,
+            systemType: passwordInfo.systemType ?? null,
+            owner: {
+                stackInstanceId: passwordInfo.owner?.stackInstanceId !== undefined
+                    ? String(passwordInfo.owner.stackInstanceId)
+                    : null,
+                systemInstanceId: passwordInfo.owner?.systemInstanceId !== undefined
+                    ? String(passwordInfo.owner.systemInstanceId)
+                    : null,
+            },
+            password: String(passwordInfo.password),
+            createdAt: new Date().toISOString(),
+        });
+
+        return { referenceId: String(passwordInfo.referenceId), token };
+    });
+
+    console.log(`[convert] Generated ${created.length} tokens for tenant=${tenant}`);
+    return sendJson(response, 200, { tokens: created });
 }
 
-function handleCleanupTokens(response, tenant, stackInstanceId, systemInstanceId, body) {
-    const excludeList = Array.isArray(body?.exclude) ? body.exclude : [];
-    const excludeSet = new Set(excludeList.map(String));
+function handleCleanupTokens(response, tenant, body) {
+    const excludeSet = new Set((Array.isArray(body?.exclude) ? body.exclude : []).map(String));
     const deletedTokens = [];
 
     for (const [token, record] of tokens.entries()) {
-        const matchesTenant = record.tenant === tenant;
-        const matchesStack = String(record.ownerData?.stackInstanceId) === String(stackInstanceId);
-        const matchesSystem = String(record.ownerData?.systemInstanceId) === String(systemInstanceId);
-
-        if (matchesTenant && matchesStack && matchesSystem && !excludeSet.has(token)) {
+        if (record.tenant === tenant && !excludeSet.has(token)) {
             tokens.delete(token);
             deletedTokens.push(token);
         }
     }
 
-    console.log(`[cleanup] Cleaned up ${deletedTokens.length} tokens for tenant=${tenant} stackInstanceId=${stackInstanceId} systemInstanceId=${systemInstanceId}`);
+    console.log(`[cleanup] Cleaned up ${deletedTokens.length} tokens for tenant=${tenant}`);
     return sendJson(response, 200, {
         deletedCount: deletedTokens.length,
         deletedTokens,
         remainingCount: tokens.size,
     });
-}
-
-function handleGetToken(response, tenant, systemType, token) {
-    const record = tokens.get(token);
-    if (!record) {
-        return sendError(response, 404, `Token '${token}' not found`);
-    }
-
-    return sendJson(response, 200, record);
 }
 
 const server = http.createServer(async (request, response) => {
@@ -234,7 +212,7 @@ const server = http.createServer(async (request, response) => {
     const pathname = parsedUrl.pathname;
     const segments = pathname.split('/').filter(Boolean).map(decodeURIComponent);
 
-    // Convenience endpoints for inspecting and controlling mock state
+    // Convenience endpoints for inspecting and resetting mock state, no auth required
     if (segments[0] === '_mock') {
         if (request.method === 'GET' && segments.length === 2 && segments[1] === 'tokens') {
             const tenantFilter = parsedUrl.searchParams.get('tenant');
@@ -246,19 +224,18 @@ const server = http.createServer(async (request, response) => {
                 result = result.filter(t => t.tenant === tenantFilter);
             }
             if (stackInstanceIdFilter) {
-                result = result.filter(t => String(t.ownerData?.stackInstanceId) === stackInstanceIdFilter);
+                result = result.filter(t => String(t.owner?.stackInstanceId) === stackInstanceIdFilter);
             }
             if (systemInstanceIdFilter) {
-                result = result.filter(t => String(t.ownerData?.systemInstanceId) === systemInstanceIdFilter);
+                result = result.filter(t => String(t.owner?.systemInstanceId) === systemInstanceIdFilter);
             }
             return sendJson(response, 200, result);
         }
 
         if (request.method === 'GET' && segments.length === 3 && segments[1] === 'tokens') {
-            const token = segments[2];
-            const record = tokens.get(token);
+            const record = tokens.get(segments[2]);
             if (!record) {
-                return sendError(response, 404, `Token '${token}' not found`);
+                return sendError(response, 404, `Token '${segments[2]}' not found`);
             }
             return sendJson(response, 200, record);
         }
@@ -272,35 +249,6 @@ const server = http.createServer(async (request, response) => {
             });
         }
 
-        if (segments.length === 2 && segments[1] === 'config') {
-            if (request.method === 'GET') {
-                return sendJson(response, 200, {
-                    failStatus: currentFailStatus,
-                    latencyMs: currentLatencyMs,
-                    authConfigured: Boolean(authUsername || authPassword),
-                });
-            }
-            if (request.method === 'POST') {
-                try {
-                    const body = await readJsonBody(request);
-                    if ('failStatus' in body) {
-                        currentFailStatus = body.failStatus ? Number(body.failStatus) : null;
-                    }
-                    if ('latencyMs' in body) {
-                        currentLatencyMs = Number(body.latencyMs ?? 0);
-                    }
-                    console.log(`[config] Updated mock config: failStatus=${currentFailStatus} latencyMs=${currentLatencyMs}`);
-                    return sendJson(response, 200, {
-                        failStatus: currentFailStatus,
-                        latencyMs: currentLatencyMs,
-                        authConfigured: Boolean(authUsername || authPassword),
-                    });
-                } catch {
-                    return sendError(response, 400, 'Invalid JSON body');
-                }
-            }
-        }
-
         return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
     }
 
@@ -310,71 +258,26 @@ const server = http.createServer(async (request, response) => {
         return sendError(response, 401, 'Unauthorized');
     }
 
-    // Apply artificial latency if configured
-    if (currentLatencyMs > 0) {
-        await new Promise(resolve => setTimeout(resolve, currentLatencyMs));
-    }
-
-    // Apply simulated failure status if configured
-    if (currentFailStatus) {
-        const status = Number(currentFailStatus);
-        return sendJson(response, status, {
-            message: `Simulated mock failure with status ${status}`,
-            errors: [`Mock failure: ${status}`],
-        });
-    }
-
-    // Read body if POST / PUT
-    let body = {};
-    if (request.method === 'POST' || request.method === 'PUT') {
-        try {
-            body = await readJsonBody(request);
-        } catch {
-            return sendError(response, 400, 'request body is not valid JSON');
-        }
-    }
-
-    // Route: /credential/v2/...
-    if (segments[0] !== 'credential' || segments[1] !== 'v2') {
+    // Route: /credential/v3/{tenant}/tokens[/cleanup]
+    if (segments[0] !== 'credential' || segments[1] !== 'v3' || segments[3] !== 'tokens' || request.method !== 'PUT') {
         return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
+    }
+
+    let body;
+    try {
+        body = await readJsonBody(request);
+    } catch {
+        return sendError(response, 400, 'request body is not valid JSON');
     }
 
     const tenant = segments[2];
 
-    // Shape: /credential/v2/{tenant}/systemtype/{systemType}/token (length 6)
-    if (segments.length === 6 && segments[3] === 'systemtype' && segments[5] === 'token') {
-        const systemType = segments[4];
-        if (request.method === 'PUT') {
-            return handleConvertCredential(response, tenant, systemType, body);
-        }
-        return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
+    if (segments.length === 4) {
+        return handleConvertCredentials(response, tenant, body);
     }
 
-    // Shape: /credential/v2/{tenant}/systemtype/{systemType}/token/{token} (length 7)
-    if (segments.length === 7 && segments[3] === 'systemtype' && segments[5] === 'token') {
-        const systemType = segments[4];
-        const token = segments[6];
-        if (request.method === 'DELETE') {
-            return handleDeleteToken(response, tenant, systemType, token);
-        }
-        if (request.method === 'GET') {
-            return handleGetToken(response, tenant, systemType, token);
-        }
-        return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
-    }
-
-    // Shape: /credential/v2/{tenant}/stack-instance/{stackInstanceId}/system-instance/{systemInstanceId}/cleanup (length 8)
-    // 0: 'credential', 1: 'v2', 2: tenant, 3: 'stack-instance', 4: stackInstanceId, 5: 'system-instance', 6: systemInstanceId, 7: 'cleanup'
-    if (segments.length === 8 &&
-        segments[3] === 'stack-instance' &&
-        segments[5] === 'system-instance' &&
-        segments[7] === 'cleanup') {
-        const stackInstanceId = segments[4];
-        const systemInstanceId = segments[6];
-        if (request.method === 'PUT') {
-            return handleCleanupTokens(response, tenant, stackInstanceId, systemInstanceId, body);
-        }
-        return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
+    if (segments.length === 5 && segments[4] === 'cleanup') {
+        return handleCleanupTokens(response, tenant, body);
     }
 
     return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
