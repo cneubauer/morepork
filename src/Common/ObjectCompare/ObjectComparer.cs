@@ -44,7 +44,7 @@ public static class ObjectComparer
                 PropertyName: propName,
                 OldValue: oldObj,
                 NewValue: newObj,
-                TargetTypeName: targetType.Name
+                TargetTypeName: targetType.FullName
             ));
             return;
         }
@@ -60,7 +60,7 @@ public static class ObjectComparer
                     PropertyName: propName,
                     OldValue: oldObj,
                     NewValue: newObj,
-                    TargetTypeName: targetType.Name
+                    TargetTypeName: targetType.FullName
                 ));
             }
             return;
@@ -185,11 +185,11 @@ public static class ObjectComparer
 
                 if (oldItem is null && newItem is not null)
                 {
-                    changes.Add(new ListChange(itemPath, ListChangeType.Added, i, newItem, itemType?.Name));
+                    changes.Add(new ListChange(itemPath, ListChangeType.Added, i, newItem, itemType?.FullName));
                 }
                 else if (oldItem is not null && newItem is null)
                 {
-                    changes.Add(new ListChange(itemPath, ListChangeType.Removed, i, oldItem, itemType?.Name));
+                    changes.Add(new ListChange(itemPath, ListChangeType.Removed, i, oldItem, itemType?.FullName));
                 }
                 else if (oldItem is not null && newItem is not null)
                 {
@@ -202,7 +202,7 @@ public static class ObjectComparer
     private static IListChange CreateListChange(Type itemType, string path, ListChangeType changeType, object? key, object item)
     {
         var genericType = typeof(ListChange<>).MakeGenericType(itemType);
-        return (IListChange)Activator.CreateInstance(genericType, path, changeType, key, item, itemType.Name)!;
+        return (IListChange)Activator.CreateInstance(genericType, path, changeType, key, item, itemType.FullName)!;
     }
 
     private static Type? GetCollectionItemType(Type collectionType)

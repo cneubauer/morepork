@@ -334,7 +334,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         );
     }
 
-    public async Task Schedule<TContext>(NpgsqlTransaction transaction, TContext context)
+    public async Task AddOutboxMessage<TContext>(NpgsqlTransaction transaction, TContext context)
     {
         var sql = "INSERT INTO outbox (context) VALUES (@Context::jsonb);";
 
@@ -346,7 +346,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         }, transaction);
     }
 
-    public async Task Dispatched(string transactionId)
+    public async Task RemoveOutboxMessage(string transactionId)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();

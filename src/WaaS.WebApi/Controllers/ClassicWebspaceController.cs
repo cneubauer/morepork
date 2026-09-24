@@ -12,7 +12,7 @@ public class ClassicWebspaceController(
     ITenantStore tenantStore,
     IStackInstanceStore stackInstanceStore,
     IDesiredStateStore<SharedWebspaceData> desiredStateStore,
-    PasswordService passwordService
+    PasswordActivities passwordService
 ) : ControllerBase
 {
     /// <summary>
@@ -79,42 +79,54 @@ public class ClassicWebspaceController(
 
         #region Convert Credential
 
-        await passwordService.ConvertCredentials(tenant, stackInstanceId, systemInstanceId, webspace.GetPasswordInfos());
+        var newTokens = await passwordService.ConvertCredentials(tenant, stackInstanceId, systemInstanceId, webspace.GetPasswordInfos());
 
         #endregion
 
         #region Update Desired State
 
-        await using var transaction = await desiredStateStore.BeginTransaction();
+        var context = default(ProcessingContext<SharedWebspaceData>);
+        var desiredState = default(IDesiredState<SharedWebspaceData>);
 
-        await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
-
-        var desiredState = await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId);
-
-        if (desiredState is null)
-            return NotFound();
-
-        desiredState.Data.Webspace.Apply(webspace);
-
-        var saveResult = await desiredStateStore.Save(transaction, desiredState, transactionId);
-        desiredState = saveResult.Current;
-
-        var context = new ProcessingContext<SharedWebspaceData>
+        try
         {
-            Tenant = tenantEntity,
-            StackInstance = (StackInstance)stackInstance,
-            DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
-            TransactionId = transactionId,
-            Changes = saveResult.Changes,
-        };
+            await using var transaction = await desiredStateStore.BeginTransaction();
 
-        await desiredStateStore.Schedule(transaction, context);
+            await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
 
-        await transaction.CommitAsync();
+            desiredState = await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId);
+
+            if (desiredState is null)
+                return NotFound();
+
+            desiredState.Data.Webspace.Apply(webspace);
+
+            var saveResult = await desiredStateStore.Save(transaction, desiredState, transactionId);
+            desiredState = saveResult.Current;
+
+            await desiredStateStore.AddOutboxMessage(transaction, context);
+
+            await transaction.CommitAsync();
+
+            context = new ProcessingContext<SharedWebspaceData>
+            {
+                Tenant = tenantEntity,
+                StackInstance = (StackInstance)stackInstance,
+                DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
+                TransactionId = transactionId,
+                Changes = saveResult.Changes,
+            };
+        }
+        catch
+        {
+            await passwordService.DeletePasswordTokens(tenant, newTokens);
+
+            throw;
+        }
 
         #endregion
 
-        #region Dispath Workflow
+        #region Dispatch Workflow
 
         var startOperation = WithStartWorkflowOperation.Create(
             (PublishClassicWebspaceWorkflow workflow) => workflow.PublishClassicWebspace(stackInstanceId, systemInstanceId),
@@ -133,7 +145,7 @@ public class ClassicWebspaceController(
             }
         );
 
-        await desiredStateStore.Dispatched(transactionId);
+        await desiredStateStore.RemoveOutboxMessage(transactionId);
 
         #endregion
 

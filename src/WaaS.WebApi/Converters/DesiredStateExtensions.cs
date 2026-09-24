@@ -39,6 +39,9 @@ public static class DesiredStateExtensions
             else
                 desiredState.Accounts.Add(new()
                 {
+                    // ExtReference is the [ItemKey] for Account: ObjectComparer skips keyed list
+                    // items whose key is null, so it has to be set for an account to be diffable.
+                    ExtReference = account.ExtReference,
                     SecurePasswordToken = account.PasswordToken ?? "",
                 });
         }
@@ -50,10 +53,13 @@ public static class DesiredStateExtensions
     private static void Apply(this DomainBinding<string> desiredState, Space.Classic.ViewModel.DomainBinding viewModel)
     {
         desiredState.Environment = viewModel.Environment;
+        // TODO: Apply other properties from the view model to the desired state as needed.
     }
 
     private static void Apply(this Space.DesiredState.Account desiredState, Space.ViewModel.Account viewModel)
     {
+        desiredState.ExtReference = viewModel.ExtReference;
         desiredState.SecurePasswordToken = viewModel.PasswordToken ?? "";
+        // TODO: Apply other properties from the view model to the desired state as needed.
     }
 }

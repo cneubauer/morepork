@@ -24,7 +24,6 @@ public class Account : WaasResource, ICredential
     /// <summary>
     /// Optional data of the client for reference purposes.
     /// </summary>
-    [ItemKeyAttribute]
     public string? ExtReference { get; set; }
 
     /// <summary>

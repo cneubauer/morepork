@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using ObjectCompare;
 using Temporalio.Exceptions;
 using Temporalio.Workflows;
+using WaaS.Common.DesiredState;
 using WaaS.Common.Workflow;
 using WaaS.Space.Classic.DesiredState;
 using WaaS.Space.DesiredState;
@@ -66,13 +67,13 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 ?? throw new ApplicationFailureException("Hostname is required", errorType: "InvalidState", nonRetryable: true);
 
             var mappingsToAdd = context.Changes
-                .OfListType<DomainBinding<string>>()
+                .OfList<DomainBinding<string>>()
                 .Where(x => x.ChangeType == ListChangeType.Added && x.Item is not null)
                 .Select(x => new WebshieldMapping(x.Item.DomainName, destination))
                 .ToList();
 
             var mappingsToRemove = context.Changes
-                .OfListType<DomainBinding<string>>()
+                .OfList<DomainBinding<string>>()
                 .Where(x => x.ChangeType == ListChangeType.Removed && x.Item is not null)
                 .Select(x => x.Item.DomainName)
                 .ToList();
@@ -82,7 +83,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             if (mappingsToAdd.Count > 0 || mappingsToRemove.Count > 0)
             {
                 var webshieldContext = await Workflow.ExecuteActivityAsync(
-                    (WebshieldActivities act) => act.PatchWebshieldMappings(context, mappingsToAdd, mappingsToRemove),
+                    (WebshieldActivities activities) => activities.PatchWebshieldMappings(context, mappingsToAdd, mappingsToRemove),
                     new()
                     {
                         StartToCloseTimeout = TimeSpan.FromSeconds(15),
@@ -103,7 +104,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             }
 
             var updateProductDns = Workflow.ExecuteLocalActivityAsync(
-                (ClassicWebspaceActivities act) => act.UpdateProductDns(context),
+                (ClassicWebspaceActivities activities) => activities.UpdateProductDns(context),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(15),
@@ -121,7 +122,9 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             // Wait for TechMW notification to arrive
             var acked = await Workflow.WaitConditionAsync(
                 () => _acknowledged.Contains(context.TransactionId),
-                TimeSpan.FromSeconds(60)
+                // We wait for TechMW response indefinitely. If we don't get any response, there is something wrong at TechMW
+                // and we have to fix it. The job has to succeed eventually.
+                TimeSpan.FromMilliseconds(Timeout.Infinite)
             );
 
             if (!acked)
@@ -132,16 +135,31 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                     nonRetryable: true);
             }
 
-            var remainingTokens = context.DesiredState.Data.Webspace.GetPasswordTokens();
+            // Tokens the transaction superseded. Revoked only once TechMW has acknowledged the
+            // new state, so the old password stays resolvable until then.
+            var stalePasswordTokens = context.Changes
+                .OfObject<ICredential>()
+                .OfProperty(x => x.SecurePasswordToken)
+                .Select(x => x.OldValue)
+                .Where(token => !string.IsNullOrEmpty(token))
+                .Select(token => token!)
+                .Distinct()
+                .ToList();
 
-            await Workflow.ExecuteLocalActivityAsync(
-                (WaasActivities<SharedWebspaceData> act) => act.CleanupPasswordTokens(context.Tenant.Name, remainingTokens),
-                new()
-                {
-                    StartToCloseTimeout = TimeSpan.FromSeconds(15),
-                    Summary = "Cleaning up password tokens",
-                }
-            );
+            if (stalePasswordTokens.Count > 0)
+            {
+                await Workflow.ExecuteLocalActivityAsync(
+                    (PasswordActivities activities) => activities.DeletePasswordTokens(
+                        context.Tenant.Name,
+                        stalePasswordTokens
+                    ),
+                    new()
+                    {
+                        StartToCloseTimeout = TimeSpan.FromSeconds(15),
+                        Summary = "Deleting superseded password tokens",
+                    }
+                );
+            }
 
             await Workflow.ExecuteLocalActivityAsync(
                 (WaasActivities<SharedWebspaceData> act) => act.SendFinalAckNotification(context.TransactionId),

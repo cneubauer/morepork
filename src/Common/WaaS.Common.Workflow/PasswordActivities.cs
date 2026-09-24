@@ -6,7 +6,7 @@ namespace WaaS.Common.Workflow;
 record TokenInfo(string ReferenceId, string Token);
 record TokensResponse(TokenInfo[] Tokens);
 
-public class PasswordService(HttpClient httpClient)
+public class PasswordActivities(HttpClient httpClient)
 {
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -15,7 +15,8 @@ public class PasswordService(HttpClient httpClient)
 
     };
 
-    public async Task<IEnumerable<string>> ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<PasswordInfo> passwordInfos)
+    [Activity]
+    public async Task<IEnumerable<string>> ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<PasswordInfo> passwordInfos, CancellationToken cancellationToken = default)
     {
         var passwordsToConvert = passwordInfos
             .Where(passwordInfo => passwordInfo.Credential.Password is not null);
@@ -33,7 +34,7 @@ public class PasswordService(HttpClient httpClient)
                     systemInstanceId,
                 }
             }),
-        }, _jsonOptions);
+        }, _jsonOptions, cancellationToken);
 
         response.EnsureSuccessStatusCode();
         
@@ -54,12 +55,13 @@ public class PasswordService(HttpClient httpClient)
 
         return tokenResult.Tokens.Select(x => x.Token);
     }
-    
-    public async Task CleanupPasswordTokens(string tenant, IEnumerable<string> excludeTokens)
+
+    [Activity]
+    public async Task DeletePasswordTokens(string tenant, IEnumerable<string> tokens)
     {
         var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens/cleanup", new
         {
-            exclude = excludeTokens,
+            tokens,
         });
 
         response.EnsureSuccessStatusCode();

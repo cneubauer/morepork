@@ -40,6 +40,7 @@ public class LockItem
     /// <summary>
     /// The lock id.
     /// </summary>
+    [ItemKey]
     public string Id { get; set; } = "";
 
     /// <summary>

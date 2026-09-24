@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -84,7 +86,7 @@ public record ListChange<T>(
     object? ItemKey,
     T? Item,
     string? ItemTypeName = null
-) : ListChange(Path, ChangeType, ItemKey, Item, ItemTypeName ?? typeof(T).Name), IListChange<T>
+) : ListChange(Path, ChangeType, ItemKey, Item, ItemTypeName ?? typeof(T).FullName), IListChange<T>
 {
     new public T? Item
     {
@@ -93,7 +95,7 @@ public record ListChange<T>(
             if (base.Item is T typed) return typed;
             if (base.Item is JsonElement jsonElement)
             {
-                return JsonSerializer.Deserialize<T>(jsonElement.GetRawText());
+                return JsonSerializer.Deserialize<T>(jsonElement.GetRawText(), ChangeExtensions.DeserializeOptions);
             }
             return (T?)base.Item;
         }
@@ -102,9 +104,62 @@ public record ListChange<T>(
     public override string ToString() => base.ToString();
 }
 
+/// <summary>
+/// A change concerning an object of type <typeparamref name="T"/>.
+/// </summary>
+/// <remarks>
+/// <see cref="OldValue"/> and <see cref="NewValue"/> hold the subject itself, and are only
+/// populated where the underlying change carries it: a list item added or removed, or the subject
+/// set to or from <c>null</c>. Both are <c>null</c> when a single property of the subject changed.
+/// <see cref="ChangeExtensions.OfProperty{T, TProperty}"/> reads a property across either case.
+/// </remarks>
+public interface IObjectChange<out T> : IChange
+{
+    T? OldValue { get; }
+    T? NewValue { get; }
+
+    /// <summary>The change this was projected from.</summary>
+    IChange Change { get; }
+}
+
+/// <summary>How a single property of a subject changed.</summary>
+public interface IPropertyValueChange<out TProperty> : IChange
+{
+    TProperty? OldValue { get; }
+    TProperty? NewValue { get; }
+}
+
+public record ObjectChange<T>(
+    string Path,
+    T? OldValue,
+    T? NewValue,
+    IChange Change
+) : IObjectChange<T>
+{
+    public ChangeKind Kind => Change.Kind;
+
+    public override string ToString() => $"[Object:{typeof(T).Name}] {Path}";
+}
+
+public record PropertyValueChange<TProperty>(
+    string Path,
+    TProperty? OldValue,
+    TProperty? NewValue,
+    ChangeKind Kind
+) : IPropertyValueChange<TProperty>
+{
+    public override string ToString() =>
+        $"[Value] {Path}: '{OldValue?.ToString() ?? "<null>"}' => '{NewValue?.ToString() ?? "<null>"}'";
+}
+
 public static class ChangeExtensions
 {
-    public static IEnumerable<IListChange<T>> OfListType<T>(this IEnumerable<IChange> changes)
+    /// <summary>
+    /// Changes to list membership whose item is a <typeparamref name="T"/>. Use this when the
+    /// <see cref="IListChange.ChangeType"/> or <see cref="IListChange.ItemKey"/> matters; use
+    /// <see cref="OfObject{T}"/> when you only care that a <typeparamref name="T"/> changed.
+    /// </summary>
+    public static IEnumerable<IListChange<T>> OfList<T>(this IEnumerable<IChange> changes)
     {
         foreach (var change in changes)
         {
@@ -126,7 +181,7 @@ public static class ChangeExtensions
                 }
                 else if (listChange.Item is JsonElement jsonElement)
                 {
-                    var deserialized = JsonSerializer.Deserialize<T>(jsonElement.GetRawText());
+                    var deserialized = Deserialize<T>(jsonElement);
                     yield return new ListChange<T>(
                         listChange.Path,
                         listChange.ChangeType,
@@ -138,6 +193,153 @@ public static class ChangeExtensions
             }
         }
     }
+
+    /// <summary>
+    /// Every change concerning an object of type <typeparamref name="T"/>, whichever shape it
+    /// arrived in: a property of the object changing, the object itself being added or removed
+    /// from a list, or the object being set to or from <c>null</c>.
+    /// </summary>
+    /// <remarks>
+    /// The object is identified by the type name recorded on the change. Pair with
+    /// <see cref="OfProperty{T, TProperty}"/> to read a value.
+    /// </remarks>
+    public static IEnumerable<IObjectChange<T>> OfObject<T>(this IEnumerable<IChange> changes)
+    {
+        foreach (var change in changes)
+        {
+            switch (change)
+            {
+                // A property of the subject changed; the change carries that property's values.
+                case IPropertyChange propertyChange when DeclaringTypeIs<T>(propertyChange):
+                    yield return new ObjectChange<T>(propertyChange.Path, default, default, change);
+                    break;
+
+                // The subject is the property's value, set to or from null.
+                case IPropertyChange propertyChange when PropertyTypeIs<T>(propertyChange):
+                {
+                    var subjectType = DeclaredPropertyType(propertyChange);
+                    yield return new ObjectChange<T>(
+                        propertyChange.Path,
+                        Materialize<T>(propertyChange.OldValue, subjectType),
+                        Materialize<T>(propertyChange.NewValue, subjectType),
+                        change
+                    );
+                    break;
+                }
+
+                case IListChange listChange when ItemTypeIs<T>(listChange):
+                {
+                    var item = Materialize<T>(listChange.Item, ChangeTypeResolver.Resolve(listChange.ItemTypeName));
+                    yield return new ObjectChange<T>(
+                        listChange.Path,
+                        listChange.ChangeType == ListChangeType.Removed ? item : default,
+                        listChange.ChangeType == ListChangeType.Added ? item : default,
+                        change
+                    );
+                    break;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Projects changes about a <typeparamref name="T"/> onto a single property of it, reporting
+    /// how that property's value changed. Changes that left the property untouched are dropped.
+    /// </summary>
+    public static IEnumerable<IPropertyValueChange<TProperty>> OfProperty<T, TProperty>(
+        this IEnumerable<IObjectChange<T>> changes,
+        Expression<Func<T, TProperty>> selector)
+    {
+        var property = PropertyOf(selector);
+
+        foreach (var change in changes)
+        {
+            // The change is this property itself.
+            if (change.Change is IPropertyChange propertyChange
+                && propertyChange.PropertyName == property.Name)
+            {
+                yield return new PropertyValueChange<TProperty>(
+                    change.Path,
+                    Coerce<TProperty>(propertyChange.OldValue),
+                    Coerce<TProperty>(propertyChange.NewValue),
+                    change.Kind
+                );
+                continue;
+            }
+
+            // Otherwise the property is read off the subject. A change to a different property of
+            // the subject materializes neither side, and drops out here.
+            if (change.OldValue is null && change.NewValue is null)
+                continue;
+
+            yield return new PropertyValueChange<TProperty>(
+                change.Path,
+                Coerce<TProperty>(ReadProperty(property, change.OldValue)),
+                Coerce<TProperty>(ReadProperty(property, change.NewValue)),
+                change.Kind
+            );
+        }
+    }
+
+    private static bool DeclaringTypeIs<T>(IPropertyChange change) =>
+        ChangeTypeResolver.Resolve(change.TargetTypeName) is { } declaringType
+        && declaringType.IsAssignableTo(typeof(T));
+
+    private static bool PropertyTypeIs<T>(IPropertyChange change) =>
+        DeclaredPropertyType(change) is { } propertyType
+        && propertyType.IsAssignableTo(typeof(T));
+
+    private static bool ItemTypeIs<T>(IListChange change) =>
+        ChangeTypeResolver.Resolve(change.ItemTypeName) is { } itemType
+        && itemType.IsAssignableTo(typeof(T));
+
+    private static Type? DeclaredPropertyType(IPropertyChange change) =>
+        ChangeTypeResolver.Resolve(change.TargetTypeName)
+            ?.GetProperty(change.PropertyName)
+            ?.PropertyType;
+
+    private static PropertyInfo PropertyOf<T, TProperty>(Expression<Func<T, TProperty>> selector) =>
+        selector.Body is MemberExpression { Member: PropertyInfo property }
+            ? property
+            : throw new ArgumentException(
+                $"Expected a property access, but got '{selector.Body}'.",
+                nameof(selector));
+
+    private static object? ReadProperty(PropertyInfo property, object? subject) =>
+        subject is null ? null : property.GetValue(subject);
+
+    /// <summary>
+    /// Rehydrates a subject that arrived as JSON into <paramref name="subjectType"/>, the concrete
+    /// type resolved from the change. <typeparamref name="T"/> may be an interface.
+    /// </summary>
+    private static T? Materialize<T>(object? value, Type? subjectType) => value switch
+    {
+        T typed => typed,
+        JsonElement element when subjectType is not null =>
+            (T?)JsonSerializer.Deserialize(element.GetRawText(), subjectType, DeserializeOptions),
+        _ => default,
+    };
+
+    private static TProperty? Coerce<TProperty>(object? value) => value switch
+    {
+        TProperty typed => typed,
+        JsonElement element => Deserialize<TProperty>(element),
+        _ => default,
+    };
+
+    private static T? Deserialize<T>(JsonElement element) =>
+        typeof(T).IsAbstract || typeof(T).IsInterface
+            ? default
+            : JsonSerializer.Deserialize<T>(element.GetRawText(), DeserializeOptions);
+
+    /// <summary>
+    /// A change travels as camelCase through the outbox and as PascalCase through Temporal, so
+    /// property names are matched without regard to casing.
+    /// </summary>
+    internal static readonly JsonSerializerOptions DeserializeOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
 }
 
 public class ChangeJsonConverter : JsonConverter<IChange>

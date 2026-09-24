@@ -21,8 +21,8 @@ public interface IDesiredStateStore<TDesiredState>
     Task<DesiredStateSaveResult<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false);
     Task MarkAsApplied(string transactionId);
 
-    Task Schedule<TContext>(NpgsqlTransaction transaction, TContext context);
-    Task Dispatched(string transactionId);
+    Task AddOutboxMessage<TContext>(NpgsqlTransaction transaction, TContext context);
+    Task RemoveOutboxMessage(string transactionId);
     
     Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
     Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);

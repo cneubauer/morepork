@@ -526,7 +526,7 @@ public class ObjectComparerTests
     }
 
     [Fact]
-    public void OfListType_OnJsonDeserializedChanges_ReturnsTypedItems()
+    public void OfList_OnJsonDeserializedChanges_ReturnsTypedItems()
     {
         var refId = Guid.NewGuid().ToString();
         var corrId = Guid.NewGuid().ToString();
@@ -546,7 +546,7 @@ public class ObjectComparerTests
         var json = System.Text.Json.JsonSerializer.Serialize(changes);
         var deserialized = System.Text.Json.JsonSerializer.Deserialize<IReadOnlyList<IChange>>(json)!;
 
-        var typedChanges = deserialized.OfListType<DomainBinding<string>>().ToList();
+        var typedChanges = deserialized.OfList<DomainBinding<string>>().ToList();
         Assert.Single(typedChanges);
         Assert.Equal(ListChangeType.Added, typedChanges[0].ChangeType);
         Assert.NotNull(typedChanges[0].Item);
