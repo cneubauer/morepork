@@ -12,7 +12,6 @@ public class PasswordActivities(HttpClient httpClient)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-
     };
 
     // This method processes sensitive data and must not be temporal activity, unless the payloads are encrypted.

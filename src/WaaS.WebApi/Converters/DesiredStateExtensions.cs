@@ -39,8 +39,7 @@ public static class DesiredStateExtensions
             else
                 desiredState.Accounts.Add(new()
                 {
-                    // ExtReference is the [ItemKey] for Account: ObjectComparer skips keyed list
-                    // items whose key is null, so it has to be set for an account to be diffable.
+                    ReferenceId = Guid.NewGuid().ToString(),
                     ExtReference = account.ExtReference,
                     SecurePasswordToken = account.PasswordToken ?? "",
                 });

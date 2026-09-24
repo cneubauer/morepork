@@ -1,7 +1,5 @@
-using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Temporalio.Api.Enums.V1;
-using WaaS.Common.ViewModel;
 
 namespace WaaS.WebApi;
 
@@ -92,8 +90,12 @@ public class ClassicWebspaceController(
         {
             await using var transaction = await desiredStateStore.BeginTransaction();
 
+            // TODO: Create System Instance ID if new Webspace should be created
+
             await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
 
+            // TODO: Create new Desired State if new Webspace should be created
+            // or read the existing Desired State if the Webspace already exists
             desiredState = await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId);
 
             if (desiredState is null)
