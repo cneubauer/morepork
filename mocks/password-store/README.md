@@ -1,15 +1,15 @@
 # Password Store Mock
 
-A dependency-free mock of the Password Store API for local development and testing against `PasswordService` in `WaaS.Common.Workflow`.
+A dependency-free mock of the Password Store API for local development and testing against `PasswordActivities` in `WaaS.Common.Workflow`.
 
 ## Endpoints
 
-The mock implements all endpoints invoked by `PasswordService`:
+The mock implements all endpoints invoked by `PasswordActivities`:
 
-| Method | Path                                   | Success | Description / Notes                                                    |
-| ------ | -------------------------------------- | ------- | ---------------------------------------------------------------------- |
-| `PUT`  | `/credential/v3/{tenant}/tokens`         | `200`   | Converts a batch of passwords into tokens                              |
-| `PUT`  | `/credential/v3/{tenant}/tokens/cleanup` | `200`   | Deletes all tokens of the tenant except those listed in `exclude`      |
+| Method | Path                                    | Success | Description / Notes                          |
+| ------ | ---------------------------------------- | ------- | --------------------------------------------- |
+| `PUT`  | `/credential/v3/{tenant}/tokens`         | `200`   | Converts a batch of passwords into tokens      |
+| `PUT`  | `/credential/v3/{tenant}/tokens/delete`  | `200`   | Deletes exactly the tokens listed in `tokens`  |
 
 ### Converting passwords
 
@@ -41,10 +41,20 @@ Response — one entry per request item, correlated via `referenceId`:
 `referenceId` and `password` are required per item; missing values yield `400`. `systemType` is the numeric
 `PasswordType` enum value (e.g. `100` = `SharedWebspaceLinux`, `300` = `Smtp`) and is stored as received.
 
-### Cleaning up tokens
+### Deleting tokens
 
-`PUT /credential/v3/{tenant}/tokens/cleanup` with `{"exclude": ["<token>", ...]}` deletes every token of the
-tenant that is not in `exclude`. Cleanup is tenant-wide — it is not scoped to a stack or system instance.
+`PUT /credential/v3/{tenant}/tokens/delete` with `{"tokens": ["<token>", ...]}` deletes exactly the listed
+tokens for the tenant. Tokens not belonging to the tenant (or that don't exist) are silently ignored.
+
+Response:
+
+```json
+{
+  "deletedCount": 1,
+  "deletedTokens": ["<token>"],
+  "remainingCount": 2
+}
+```
 
 ### Debugging & Inspection Endpoints
 
@@ -66,7 +76,7 @@ The mock starts with the tokens present in [`sql/04-seed.sql`](../../sql/04-seed
 | `818xxxfcbbaa449f99dd9dc81ecc55cd` | `demo` | `100` SharedWebspaceLinux | Account `a5432102`  |
 | `ca6xxx3feb5842baaad3fae7123428f`  | `demo` | `300` Smtp                | `mailconfiguration` |
 
-This ensures that cleanup and verification calls against seeded instances work out of the box.
+This ensures that delete and verification calls against seeded instances work out of the box.
 
 ## Configuration
 

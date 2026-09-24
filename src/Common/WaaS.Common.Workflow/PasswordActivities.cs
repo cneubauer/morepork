@@ -15,7 +15,8 @@ public class PasswordActivities(HttpClient httpClient)
 
     };
 
-    [Activity]
+    // This method processes sensitive data and must not be temporal activity, unless the payloads are encrypted.
+    // [Activity]
     public async Task<IEnumerable<string>> ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<PasswordInfo> passwordInfos, CancellationToken cancellationToken = default)
     {
         var passwordsToConvert = passwordInfos
@@ -59,7 +60,7 @@ public class PasswordActivities(HttpClient httpClient)
     [Activity]
     public async Task DeletePasswordTokens(string tenant, IEnumerable<string> tokens)
     {
-        var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens/cleanup", new
+        var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens/delete", new
         {
             tokens,
         });

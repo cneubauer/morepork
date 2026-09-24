@@ -1,10 +1,10 @@
 // Mock of the Password Store API.
 //
-// Endpoints used by PasswordService:
+// Endpoints used by PasswordActivities:
 //   PUT  /credential/v3/{tenant}/tokens
 //          -> Converts a batch of plaintext passwords into tokens
-//   PUT  /credential/v3/{tenant}/tokens/cleanup
-//          -> Deletes all tokens of the tenant except the excluded ones
+//   PUT  /credential/v3/{tenant}/tokens/delete
+//          -> Deletes exactly the given tokens
 //
 // Additional inspection and debug endpoints:
 //   GET  /_mock/tokens
@@ -187,18 +187,19 @@ function handleConvertCredentials(response, tenant, body) {
     return sendJson(response, 200, { tokens: created });
 }
 
-function handleCleanupTokens(response, tenant, body) {
-    const excludeSet = new Set((Array.isArray(body?.exclude) ? body.exclude : []).map(String));
+function handleDeleteTokens(response, tenant, body) {
+    const requestedTokens = new Set((Array.isArray(body?.tokens) ? body.tokens : []).map(String));
     const deletedTokens = [];
 
-    for (const [token, record] of tokens.entries()) {
-        if (record.tenant === tenant && !excludeSet.has(token)) {
+    for (const token of requestedTokens) {
+        const record = tokens.get(token);
+        if (record && record.tenant === tenant) {
             tokens.delete(token);
             deletedTokens.push(token);
         }
     }
 
-    console.log(`[cleanup] Cleaned up ${deletedTokens.length} tokens for tenant=${tenant}`);
+    console.log(`[delete] Deleted ${deletedTokens.length} tokens for tenant=${tenant}`);
     return sendJson(response, 200, {
         deletedCount: deletedTokens.length,
         deletedTokens,
@@ -258,7 +259,7 @@ const server = http.createServer(async (request, response) => {
         return sendError(response, 401, 'Unauthorized');
     }
 
-    // Route: /credential/v3/{tenant}/tokens[/cleanup]
+    // Route: /credential/v3/{tenant}/tokens[/delete]
     if (segments[0] !== 'credential' || segments[1] !== 'v3' || segments[3] !== 'tokens' || request.method !== 'PUT') {
         return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
     }
@@ -276,8 +277,8 @@ const server = http.createServer(async (request, response) => {
         return handleConvertCredentials(response, tenant, body);
     }
 
-    if (segments.length === 5 && segments[4] === 'cleanup') {
-        return handleCleanupTokens(response, tenant, body);
+    if (segments.length === 5 && segments[4] === 'delete') {
+        return handleDeleteTokens(response, tenant, body);
     }
 
     return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
