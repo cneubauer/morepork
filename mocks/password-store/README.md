@@ -6,10 +6,12 @@ A dependency-free mock of the Password Store API for local development and testi
 
 The mock implements all endpoints invoked by `PasswordActivities`:
 
-| Method | Path                                    | Success | Description / Notes                          |
-| ------ | ---------------------------------------- | ------- | --------------------------------------------- |
-| `PUT`  | `/credential/v3/{tenant}/tokens`         | `200`   | Converts a batch of passwords into tokens      |
-| `PUT`  | `/credential/v3/{tenant}/tokens/delete`  | `200`   | Deletes exactly the tokens listed in `tokens`  |
+| Method | Path                                          | Success | Description / Notes                                          |
+| ------ | ---------------------------------------------- | ------- | -------------------------------------------------------------- |
+| `PUT`  | `/credential/v3/{tenant}/tokens`               | `200`   | Converts a batch of passwords into tokens                      |
+| `PUT`  | `/credential/v3/{tenant}/tokens?transactional=true` | `200` | Same, but tokens are temporary until committed                 |
+| `PUT`  | `/credential/v3/{tenant}/tokens/commit`        | `200`   | Commits transactional tokens, making them permanent            |
+| `PUT`  | `/credential/v3/{tenant}/tokens/delete`        | `200`   | Deletes exactly the tokens listed in `tokens`                   |
 
 ### Converting passwords
 
@@ -33,13 +35,32 @@ Response — one entry per request item, correlated via `referenceId`:
 ```json
 {
   "tokens": [
-    { "referenceId": "5c9392216d3e486f956b8e7b079f2c36", "token": "<uuid_without_dashes>" }
+    { "referenceId": "5c9392216d3e486f956b8e7b079f2c36", "token": "<uuid_without_dashes>", "expires": null }
   ]
 }
 ```
 
 `referenceId` and `password` are required per item; missing values yield `400`. `systemType` is the numeric
 `PasswordType` enum value (e.g. `100` = `SharedWebspaceLinux`, `300` = `Smtp`) and is stored as received.
+
+With `?transactional=true`, created tokens are stored with an expiration (`expires` in the response,
+`TRANSACTIONAL_TOKEN_TTL_MS` from now, default 24h) instead of `null`. Uncommitted transactional tokens are
+purged automatically once they expire. Call the commit endpoint to make them permanent before that happens.
+
+### Committing tokens
+
+`PUT /credential/v3/{tenant}/tokens/commit` with `{"tokens": ["<token>", ...]}` clears the expiration on the
+listed tokens, making them permanent. Any token not found for the tenant (already expired/purged, unknown,
+or belonging to another tenant) causes a `404` and nothing is committed.
+
+Response:
+
+```json
+{
+  "committedCount": 1,
+  "committedTokens": ["<token>"]
+}
+```
 
 ### Deleting tokens
 
@@ -88,6 +109,7 @@ Settings can be configured via environment variables:
 | `HOST`          | `0.0.0.0` | Host interface to bind                                               |
 | `AUTH_USERNAME` | `""`      | Optional HTTP Basic Auth username (if empty, auth check is disabled) |
 | `AUTH_PASSWORD` | `""`      | Optional HTTP Basic Auth password                                    |
+| `TRANSACTIONAL_TOKEN_TTL_MS` | `86400000` (24h) | Expiration window for tokens created with `?transactional=true` before they're purged |
 
 ## Running
 

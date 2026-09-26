@@ -86,45 +86,36 @@ public class ClassicWebspaceController(
         var context = default(ProcessingContext<SharedWebspaceData>);
         var desiredState = default(IDesiredState<SharedWebspaceData>);
 
-        try
+        await using var transaction = await desiredStateStore.BeginTransaction();
+
+        // TODO: Create System Instance ID if new Webspace should be created
+
+        await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
+
+        // TODO: Create new Desired State if new Webspace should be created
+        // or read the existing Desired State if the Webspace already exists
+        desiredState = await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId);
+
+        if (desiredState is null)
+            return NotFound();
+
+        desiredState.Data.Webspace.Apply(webspace);
+
+        var saveResult = await desiredStateStore.Save(transaction, desiredState, transactionId);
+        desiredState = saveResult.Current;
+
+        await desiredStateStore.AddOutboxMessage(transaction, context);
+
+        await transaction.CommitAsync();
+
+        context = new ProcessingContext<SharedWebspaceData>
         {
-            await using var transaction = await desiredStateStore.BeginTransaction();
-
-            // TODO: Create System Instance ID if new Webspace should be created
-
-            await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
-
-            // TODO: Create new Desired State if new Webspace should be created
-            // or read the existing Desired State if the Webspace already exists
-            desiredState = await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId);
-
-            if (desiredState is null)
-                return NotFound();
-
-            desiredState.Data.Webspace.Apply(webspace);
-
-            var saveResult = await desiredStateStore.Save(transaction, desiredState, transactionId);
-            desiredState = saveResult.Current;
-
-            await desiredStateStore.AddOutboxMessage(transaction, context);
-
-            await transaction.CommitAsync();
-
-            context = new ProcessingContext<SharedWebspaceData>
-            {
-                Tenant = tenantEntity,
-                StackInstance = (StackInstance)stackInstance,
-                DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
-                TransactionId = transactionId,
-                Changes = saveResult.Changes,
-            };
-        }
-        catch
-        {
-            await passwordService.DeletePasswordTokens(tenant, newTokens);
-
-            throw;
-        }
+            Tenant = tenantEntity,
+            StackInstance = (StackInstance)stackInstance,
+            DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
+            TransactionId = transactionId,
+            Changes = saveResult.Changes,
+        };
 
         #endregion
 

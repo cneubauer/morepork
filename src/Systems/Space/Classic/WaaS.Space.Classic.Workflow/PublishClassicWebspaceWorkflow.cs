@@ -192,8 +192,20 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
 
         _pending.Add(context.TransactionId);
 
+        await Workflow.ExecuteLocalActivityAsync(
+            (PasswordActivities activities) => activities.CommitPasswordTokens(
+                context.Tenant.Name,
+                context.DesiredState.Data.Webspace.GetPasswordTokens()
+            ),
+            new()
+            {
+                StartToCloseTimeout = TimeSpan.FromSeconds(15),
+                Summary = "Sending Desired State to TechMW",
+            }
+        );
+
         context = await Workflow.ExecuteLocalActivityAsync(
-            (ClassicWebspaceActivities act) => act.SendToTechMw(context),
+            (ClassicWebspaceActivities activities) => activities.SendToTechMw(context),
             new()
             {
                 StartToCloseTimeout = TimeSpan.FromSeconds(15),
@@ -219,7 +231,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
         foreach (var transaction in includedTransactions)
         {
             await Workflow.ExecuteLocalActivityAsync(
-                (ClassicWebspaceActivities act) => act.MarkAsApplied(transaction),
+                (ClassicWebspaceActivities activities) => activities.MarkAsApplied(transaction),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(10),
@@ -228,7 +240,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             );
 
             await Workflow.ExecuteLocalActivityAsync(
-                (WaasActivities<SharedWebspaceData> act) => act.SendIntermediateNotification(transaction),
+                (WaasActivities<SharedWebspaceData> actvities) => actvities.SendIntermediateNotification(transaction),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(10),

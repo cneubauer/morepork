@@ -21,7 +21,7 @@ public class PasswordActivities(HttpClient httpClient)
         var passwordsToConvert = passwordInfos
             .Where(passwordInfo => passwordInfo.Credential.Password is not null);
 
-        var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens", new
+        var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens?transactional=true", new
         {
             passwordInfos = passwordsToConvert.Select(x => new
             {
@@ -54,6 +54,17 @@ public class PasswordActivities(HttpClient httpClient)
         }
 
         return tokenResult.Tokens.Select(x => x.Token);
+    }
+
+    [Activity]
+    public async Task CommitPasswordTokens(string tenant, IEnumerable<string> tokens)
+    {
+        var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens/commit", new
+        {
+            tokens,
+        });
+
+        response.EnsureSuccessStatusCode();
     }
 
     [Activity]

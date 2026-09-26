@@ -1,8 +1,13 @@
 // Mock of the Password Store API.
 //
 // Endpoints used by PasswordActivities:
-//   PUT  /credential/v3/{tenant}/tokens
-//          -> Converts a batch of plaintext passwords into tokens
+//   PUT  /credential/v3/{tenant}/tokens[?transactional=true]
+//          -> Converts a batch of plaintext passwords into tokens.
+//             With transactional=true, tokens are stored with a short
+//             expiration and are not permanent until committed.
+//   PUT  /credential/v3/{tenant}/tokens/commit
+//          -> Commits previously created transactional tokens, making
+//             them permanent (clears their expiration).
 //   PUT  /credential/v3/{tenant}/tokens/delete
 //          -> Deletes exactly the given tokens
 //
@@ -14,7 +19,8 @@
 //   POST /_mock/reset
 //          -> Resets mock back to initial seeded state
 //
-// State is in-memory only and resets on restart.
+// State is in-memory only and resets on restart. Uncommitted transactional
+// tokens are purged once their expiration passes.
 
 const http = require('node:http');
 const crypto = require('node:crypto');
@@ -24,6 +30,8 @@ const host = process.env.HOST ?? '0.0.0.0';
 
 const authUsername = process.env.AUTH_USERNAME || '';
 const authPassword = process.env.AUTH_PASSWORD || '';
+
+const transactionalTokenTtlMs = Number(process.env.TRANSACTIONAL_TOKEN_TTL_MS ?? 24 * 60 * 60 * 1000);
 
 // token -> token record
 const tokens = new Map();
@@ -41,6 +49,7 @@ const SEEDED_TOKENS = [
         },
         password: 'seeded-account-password-1',
         createdAt: '2026-07-14T10:06:47.495Z',
+        expiresAt: null,
     },
     {
         token: '818xxxfcbbaa449f99dd9dc81ecc55cd',
@@ -53,6 +62,7 @@ const SEEDED_TOKENS = [
         },
         password: 'seeded-account-password-2',
         createdAt: '2026-07-14T10:06:47.495Z',
+        expiresAt: null,
     },
     {
         token: 'ca6xxx3feb5842baaad3fae7123428f',
@@ -65,6 +75,7 @@ const SEEDED_TOKENS = [
         },
         password: 'seeded-mail-password',
         createdAt: '2026-07-14T10:06:47.495Z',
+        expiresAt: null,
     },
 ];
 
@@ -140,7 +151,16 @@ function generateToken() {
     return crypto.randomUUID().replace(/-/g, '');
 }
 
-function handleConvertCredentials(response, tenant, body) {
+function purgeExpiredTransactionalTokens() {
+    const now = Date.now();
+    for (const [token, record] of tokens.entries()) {
+        if (record.expiresAt && new Date(record.expiresAt).getTime() <= now) {
+            tokens.delete(token);
+        }
+    }
+}
+
+function handleConvertCredentials(response, tenant, body, transactional) {
     const passwordInfos = body?.passwordInfos;
     if (!Array.isArray(passwordInfos)) {
         return sendError(response, 400, 'Missing passwordInfos', ['passwordInfos must be an array']);
@@ -161,6 +181,11 @@ function handleConvertCredentials(response, tenant, body) {
         return sendError(response, 400, 'Invalid passwordInfos', errors);
     }
 
+    const now = new Date();
+    const expiresAt = transactional
+        ? new Date(now.getTime() + transactionalTokenTtlMs).toISOString()
+        : null;
+
     const created = passwordInfos.map(passwordInfo => {
         const token = generateToken();
         tokens.set(token, {
@@ -177,14 +202,45 @@ function handleConvertCredentials(response, tenant, body) {
                     : null,
             },
             password: String(passwordInfo.password),
-            createdAt: new Date().toISOString(),
+            createdAt: now.toISOString(),
+            expiresAt,
         });
 
-        return { referenceId: String(passwordInfo.referenceId), token };
+        return { referenceId: String(passwordInfo.referenceId), token, expires: expiresAt };
     });
 
-    console.log(`[convert] Generated ${created.length} tokens for tenant=${tenant}`);
+    console.log(`[convert] Generated ${created.length} tokens for tenant=${tenant} (transactional=${transactional})`);
     return sendJson(response, 200, { tokens: created });
+}
+
+function handleCommitTokens(response, tenant, body) {
+    const requestedTokens = Array.isArray(body?.tokens) ? body.tokens.map(String) : null;
+    if (!requestedTokens) {
+        return sendError(response, 400, 'Missing tokens', ['tokens must be an array']);
+    }
+
+    const committedTokens = [];
+    const notFoundTokens = [];
+
+    for (const token of requestedTokens) {
+        const record = tokens.get(token);
+        if (record && record.tenant === tenant) {
+            record.expiresAt = null;
+            committedTokens.push(token);
+        } else {
+            notFoundTokens.push(token);
+        }
+    }
+
+    if (notFoundTokens.length > 0) {
+        return sendError(response, 404, 'Some tokens were not found', notFoundTokens.map(token => `token '${token}' not found`));
+    }
+
+    console.log(`[commit] Committed ${committedTokens.length} tokens for tenant=${tenant}`);
+    return sendJson(response, 200, {
+        committedCount: committedTokens.length,
+        committedTokens,
+    });
 }
 
 function handleDeleteTokens(response, tenant, body) {
@@ -259,10 +315,12 @@ const server = http.createServer(async (request, response) => {
         return sendError(response, 401, 'Unauthorized');
     }
 
-    // Route: /credential/v3/{tenant}/tokens[/delete]
+    // Route: /credential/v3/{tenant}/tokens[/commit|/delete]
     if (segments[0] !== 'credential' || segments[1] !== 'v3' || segments[3] !== 'tokens' || request.method !== 'PUT') {
         return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
     }
+
+    purgeExpiredTransactionalTokens();
 
     let body;
     try {
@@ -274,7 +332,12 @@ const server = http.createServer(async (request, response) => {
     const tenant = segments[2];
 
     if (segments.length === 4) {
-        return handleConvertCredentials(response, tenant, body);
+        const transactional = parsedUrl.searchParams.get('transactional') === 'true';
+        return handleConvertCredentials(response, tenant, body, transactional);
+    }
+
+    if (segments.length === 5 && segments[4] === 'commit') {
+        return handleCommitTokens(response, tenant, body);
     }
 
     if (segments.length === 5 && segments[4] === 'delete') {
