@@ -19,7 +19,11 @@ public class PasswordActivities(HttpClient httpClient)
     public async Task<IEnumerable<string>> ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<PasswordInfo> passwordInfos, CancellationToken cancellationToken = default)
     {
         var passwordsToConvert = passwordInfos
-            .Where(passwordInfo => passwordInfo.Credential.Password is not null);
+            .Where(passwordInfo => passwordInfo.Credential.Password is not null)
+            .ToList();
+
+        if (passwordsToConvert.Count == 0)
+            return [];
 
         var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens?transactional=true", new
         {
@@ -38,7 +42,7 @@ public class PasswordActivities(HttpClient httpClient)
 
         response.EnsureSuccessStatusCode();
         
-        var tokenResult = await response.Content.ReadFromJsonAsync<TokensResponse>()
+        var tokenResult = await response.Content.ReadFromJsonAsync<TokensResponse>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("Unexpected response from Password Store.");
 
         foreach (var passwordInfo in passwordsToConvert)

@@ -49,7 +49,7 @@ public class SharedWebspace : Space.ViewModel.Space, IPasswordContainer
         if (WebAnalytics?.Password is not null)
             passwordInfos = passwordInfos.Append(new PasswordInfo(WebAnalytics, PasswordType.WebAnalytics));
 
-        return passwordInfos;
+        return [.. passwordInfos];
     }
 
     public void Tombstone()

@@ -38,6 +38,7 @@ builder.Services
         "space-classic")
     .AddScopedActivities<WaasActivities<SharedWebspaceData>>()
     .AddScopedActivities<ClassicWebspaceActivities>()
+    .AddScopedActivities<PasswordActivities>()
     .AddWorkflow<PublishClassicWebspaceWorkflow>();
 
 builder.Services.AddHealthChecks()
