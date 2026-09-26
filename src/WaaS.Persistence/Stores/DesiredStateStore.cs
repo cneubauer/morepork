@@ -170,58 +170,23 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         );
     }
 
-    public async Task<IDesiredState<TDesiredState>> Create(NpgsqlTransaction transaction, IStackInstance stackInstance, string transactionId)
+    public async Task<ulong> CreateSystemInstanceId(ulong stackInstanceId)
     {
         const string sql = """
-            WITH new_system AS (
-                INSERT INTO system_instance (stack_instance_id)
-                    VALUES (@StackInstanceId)
-                RETURNING id
-            )
-            INSERT INTO desired_state (
-                stack_instance_id, system_instance_id, state_namespace, state_zone, state_version,
-                data, tenant, tombstoned, applied, expired, next_check
-            )
-            SELECT
-                @StackInstanceId, id, @Namespace, @Zone, 0,
-                @Data::jsonb, @Tenant, false, NULL, NULL, @NextCheck
-            FROM new_system
-            RETURNING
-                stack_instance_id AS StackInstanceId,
-                system_instance_id AS SystemInstanceId,
-                state_namespace AS Namespace,
-                state_zone AS Zone,
-                state_version AS Version,
-                data,
-                tenant,
-                tombstoned,
-                created,
-                applied,
-                expired,
-                transaction_id AS TransactionId
+            INSERT INTO system_instance (stack_instance_id)
+                VALUES (@StackInstanceId)
+            RETURNING id;
             """;
 
-        var initial = new DesiredState<TDesiredState>
-        {
-            StackInstanceId = stackInstance.Id,
-            Tenant = stackInstance.TenantId,
-            Zone = stackInstance.Zone,
-            TransactionId = transactionId,
-        };
+        using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
 
-        var desiredState = await transaction.Connection.QuerySingleAsync<DesiredState<TDesiredState>>(sql, new
+        var systemInstanceId = await connection.ExecuteScalarAsync<long>(sql, new
         {
-            StackInstanceId = (long)initial.StackInstanceId,
-            initial.Namespace,
-            initial.Zone,
-            initial.Data,
-            initial.Tenant,
-            initial.Created,
-            initial.NextCheck,
-            initial.TransactionId
-        }, transaction);
+            StackInstanceId = (long)stackInstanceId,
+        });
 
-        return desiredState;
+        return (ulong)systemInstanceId;
     }
 
     public async Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)

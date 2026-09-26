@@ -14,6 +14,7 @@ public class DesiredState<T> : IDesiredState<T> where T : IDesiredStateData, new
     public required short Tenant { get; init; }
     public required short Zone { get; init; }
     public required string TransactionId { get; init; }
+    public required ulong SystemInstanceId { get; init; }
 
     #endregion
 
@@ -34,7 +35,6 @@ public class DesiredState<T> : IDesiredState<T> where T : IDesiredStateData, new
 
     #region Optional Properties
 
-    public ulong? SystemInstanceId { get; set; }
     public DateTime? Applied { get; set; }
     public DateTime? Expired { get; set; }
     public DateTime? NextCheck => Data.GetNextCheck();

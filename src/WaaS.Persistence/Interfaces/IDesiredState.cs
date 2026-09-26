@@ -17,7 +17,7 @@ public interface IDesiredState
     /// The system-specific instance ID that uniquely identifies this desired state within its Stack Instance and namespace.
     /// Null for newly created desired states that have not yet been persisted.
     /// </summary>
-    ulong? SystemInstanceId { get; set; }
+    ulong SystemInstanceId { get; }
 
     /// <summary>
     /// The namespace partitioning the desired state within the Stack Instance.
