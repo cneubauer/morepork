@@ -487,6 +487,7 @@ public class ObjectComparerTests
             DesiredState = new WaaS.Persistence.DesiredState<WaaS.Space.Classic.DesiredState.SharedWebspaceData>
             {
                 StackInstanceId = 1234567,
+                SystemInstanceId = 5001234567,
                 Tenant = 1,
                 Zone = 1,
                 TransactionId = "tx-123",

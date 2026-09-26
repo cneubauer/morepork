@@ -90,7 +90,7 @@ public class WorkflowExecutor(
             }
 
             var stackInstanceId = context.StackInstance.Id;
-            var systemInstanceId = context.DesiredState.SystemInstanceId ?? 0;
+            var systemInstanceId = context.DesiredState.SystemInstanceId;
 
             logger.LogWarning(
                 "Recovering abandoned outbox entry {TransactionId} for stack instance {StackInstanceId}, system instance {SystemInstanceId}",
