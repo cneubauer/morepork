@@ -118,13 +118,13 @@ public class ClassicWebspaceController(
 
         await using var transaction = await desiredStateStore.BeginTransaction();
 
-        // TODO: Create System Instance ID if new Webspace should be created
-
         await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
 
-        // TODO: Create new Desired State if new Webspace should be created
-        // or read the existing Desired State if the Webspace already exists
-        desiredState = await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId);
+        // If a system instance ID was provided, we are updating an existing desired state;
+        // otherwise, we are creating a new one.
+        desiredState = existingSystemInstanceId is not null
+            ? await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId)
+            : await desiredStateStore.Build(tenantEntity, stackInstance, systemInstanceId, transactionId);
 
         if (desiredState is null)
             return NotFound();

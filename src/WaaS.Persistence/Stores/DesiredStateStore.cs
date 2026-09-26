@@ -189,6 +189,22 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         return (ulong)systemInstanceId;
     }
 
+    public async Task<IDesiredState<TDesiredState>?> Build(Tenant tenant, IStackInstance stackInstance, ulong systemInstanceId, string transactionId)
+    {
+        var desiredState = new DesiredState<TDesiredState>
+        {
+            StackInstanceId = stackInstance.Id,
+            SystemInstanceId = systemInstanceId,
+            Tenant = tenant.Id,
+            Zone = stackInstance.Zone,
+            TransactionId = transactionId,
+        };
+
+        // TODO: Generate Product Domain binding from tenant profile
+
+        return desiredState;
+    }
+
     public async Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         await using var connection = new NpgsqlConnection(connectionString);
