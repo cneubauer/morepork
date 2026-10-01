@@ -31,9 +31,7 @@
     <Project Path="src/Systems/Webshield/WaaS.Webshield.Workflow/WaaS.Webshield.Workflow.csproj" />
     <Project Path="src/Systems/Webshield/WaaS.Webshield.Worker/WaaS.Webshield.Worker.csproj" />
   </Folder>
-  <Folder Name="/test/">
-    <Project Path="test/ObjectCompare.UnitTests/ObjectCompare.UnitTests.csproj" />
-  </Folder>
+  <Folder Name="/test/" />
   <Folder Name="/mocks/">
     <Project Path="mocks/webshield-node/WaaS.Mock.WebshieldNode.csproj" />
   </Folder>
