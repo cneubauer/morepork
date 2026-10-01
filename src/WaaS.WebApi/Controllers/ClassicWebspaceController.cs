@@ -31,7 +31,7 @@ public class ClassicWebspaceController(
         [FromRoute] ulong stackInstanceId,
         [FromBody] Space.Classic.ViewModel.SharedWebspace webspace,
         [FromHeader(Name = "Transaction-Id")] string? transactionId
-    ) => await ProvisionClassicWebspace(tenant, stackInstanceId, existingSystemInstanceId: null, webspace, transactionId);
+    ) => await ProvisionClassicWebspace(tenant, stackInstanceId, givenSystemInstanceId: null, webspace, transactionId);
 
     /// <summary>
     /// Update Classic Webspace
@@ -57,7 +57,7 @@ public class ClassicWebspaceController(
     private async Task<IActionResult> ProvisionClassicWebspace(
         string tenant,
         ulong stackInstanceId,
-        ulong? existingSystemInstanceId,
+        ulong? givenSystemInstanceId,
         Space.Classic.ViewModel.SharedWebspace webspace,
         string? transactionId
     )
@@ -81,7 +81,7 @@ public class ClassicWebspaceController(
 
         #endregion
 
-        var systemInstanceId = existingSystemInstanceId ?? await desiredStateStore.CreateSystemInstanceId(stackInstanceId);
+        var systemInstanceId = givenSystemInstanceId ?? await desiredStateStore.CreateSystemInstanceId(stackInstanceId);
 
         var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
 
@@ -113,16 +113,13 @@ public class ClassicWebspaceController(
 
         #region Update Desired State
 
-        var context = default(ProcessingContext<SharedWebspaceData>);
-        var desiredState = default(IDesiredState<SharedWebspaceData>);
-
         await using var transaction = await desiredStateStore.BeginTransaction();
 
         await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
 
         // If a system instance ID was provided, we are updating an existing desired state;
         // otherwise, we are creating a new one.
-        desiredState = existingSystemInstanceId is not null
+        var desiredState = givenSystemInstanceId is not null
             ? await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId)
             : await desiredStateStore.Build(tenantEntity, stackInstance, systemInstanceId, transactionId);
 
@@ -132,20 +129,19 @@ public class ClassicWebspaceController(
         desiredState.Data.Webspace.Apply(webspace);
 
         var saveResult = await desiredStateStore.Save(transaction, desiredState, transactionId);
-        desiredState = saveResult.Current;
+
+        ProcessingContext<SharedWebspaceData> context = new()
+        {
+            Tenant = tenantEntity,
+            StackInstance = (StackInstance)stackInstance,
+            DesiredState = (DesiredState<SharedWebspaceData>)saveResult.Current,
+            TransactionId = transactionId,
+            Changes = saveResult.Changes,
+        };
 
         await desiredStateStore.AddOutboxMessage(transaction, context);
 
         await transaction.CommitAsync();
-
-        context = new ProcessingContext<SharedWebspaceData>
-        {
-            Tenant = tenantEntity,
-            StackInstance = (StackInstance)stackInstance,
-            DesiredState = (DesiredState<SharedWebspaceData>)desiredState,
-            TransactionId = transactionId,
-            Changes = saveResult.Changes,
-        };
 
         #endregion
 
@@ -171,9 +167,6 @@ public class ClassicWebspaceController(
         await desiredStateStore.RemoveOutboxMessage(transactionId);
 
         #endregion
-
-        if (context is null)
-            return Accepted(desiredState!.Data.Space.ToViewModel(desiredState.SystemInstanceId));
 
         if (context.ValidationErrors.Count > 0)
             return BadRequest(new { Errors = context.ValidationErrors });

@@ -189,7 +189,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         return (ulong)systemInstanceId;
     }
 
-    public async Task<IDesiredState<TDesiredState>?> Build(Tenant tenant, IStackInstance stackInstance, ulong systemInstanceId, string transactionId)
+    public async Task<IDesiredState<TDesiredState>> Build(Tenant tenant, IStackInstance stackInstance, ulong systemInstanceId, string transactionId)
     {
         var desiredState = new DesiredState<TDesiredState>
         {
