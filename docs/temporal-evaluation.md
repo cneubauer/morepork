@@ -5,8 +5,11 @@
 > Temporal is the better of those two — but the cluster is a real commitment. See
 > [infrastructure.md](infrastructure.md) for what setting it up entails.
 
-Status: decision recorded 2026-07-31. Revisit if the workload assumptions in §2 turn out
-to be wrong — they drove most of this analysis and they have already been revised once.
+Status: decision recorded 2026-07-31. **Revalidation pending:** subsequent legacy
+traffic analysis and clarified per-transaction ACK/notification requirements are in
+[temporal-vs-custom-workflow-reassessment.md](temporal-vs-custom-workflow-reassessment.md).
+That document is a provisional reassessment, not a replacement adoption decision or
+new production sizing. Revisit the workload assumptions in §2 before relying on them.
 
 ---
 
