@@ -62,10 +62,12 @@ The trailing slash matters — `HttpClient.BaseAddress` drops the last path segm
 
 ## Behaviour
 
-`webspace_id`, `tenant`, `host`, `webspace_ipv4`, `webspace_ipv6`, `tech_webspace_id`, `slot_id`
-and `tech_mode` are `readOnly` in the spec, so client-supplied values are ignored and replaced
-with generated ones. IDs start at 1000 and increment; hostnames and IPs are derived from the ID,
-and addresses come from the reserved documentation ranges (`192.0.2.0/24`, `2001:db8::/32`).
+`webspace_id`, `tenant`, `host`, `webspace_ipv4`, `webspace_ipv6`, `tech_webspace_id`, `slot_id`,
+`tech_mode` and owner data are server-assigned, so client-supplied values are ignored and replaced
+with generated ones. IDs start at 1000 and increment; hostnames, IPs and owner names (`ws<id>`) are
+derived from the ID, and addresses come from the reserved documentation ranges (`192.0.2.0/24`,
+`2001:db8::/32`). Account IDs and usernames (`u<id><position>`) are generated deterministically
+from the webspace ID too. The pre-existing seeded webspace keeps its seed data unchanged.
 
 Responses echo the desired state with `_actual` mirroring it, as if deployment already converged —
 the real backend is asynchronous and reaches that state only after a delay. `_errors` is always
@@ -90,4 +92,3 @@ This signals the waiting `PublishClassicWebspaceWorkflow` via `WaaS.WebApi`'s `A
 | `HOST` | `0.0.0.0` | Host interface to bind |
 | `WAAS_API_URL` | `http://127.0.0.1:5000` | Base URL of WaaS API (in docker: `http://waas-api:8080`) |
 | `ACK_DELAY_MS` | `2000` | Delay in milliseconds before sending the ActualState notification |
-

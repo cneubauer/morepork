@@ -25,7 +25,7 @@ public class DesiredState<T> : IDesiredState<T> where T : IDesiredStateData, new
         .GetCustomAttribute<DesiredStateDataAttribute>()?
         .Namespace
         ?? throw new InvalidOperationException($"Desired State '{typeof(T).FullName}' is missing the DesiredStateNamespaceAttribute.");
-    public ulong Version { get; internal set; } = 0;
+    public ulong Version { get; init; } = 0;
     public T Data { get; init; } = new T();
     public DateTime Created { get; init; } = default;
     public bool Tombstoned { get; set; } = false;

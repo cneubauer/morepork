@@ -16,9 +16,11 @@ describe 'morepork' do
 
     transaction_id = response.headers['Transaction-Id']
 
-    expect transaction_id.not_to be_empty
+    assert transaction_id.not_to be_empty
 
     assert response.code.to be 202
+
+    also 'check webspace properties', with: response.json
 
     system_id = response.json.systemInstanceId
 
@@ -26,6 +28,8 @@ describe 'morepork' do
       get "#{env.tenant}/stack-instances/#{stack_id}/webspaces/#{system_id}"
     end
 
-    expect response.code.to be 200
+    assert response.code.to be 200
+
+    also 'check webspace properties', with: response.json
   end
 end

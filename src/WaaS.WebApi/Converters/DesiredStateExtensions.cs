@@ -4,6 +4,9 @@ public static class DesiredStateExtensions
 {
     public static void Apply(this SharedWebspace desiredState, Space.Classic.ViewModel.SharedWebspace viewModel)
     {
+        if (viewModel.Data.Platform is { } platform)
+            desiredState.Platform = (Platform)platform;
+
         desiredState.MailConfiguration = viewModel.MailConfiguration is null
             ? null
             : new Space.DesiredState.MailConfiguration

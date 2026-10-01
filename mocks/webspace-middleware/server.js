@@ -95,6 +95,16 @@ function assignReadOnlyFields(webspace, tenant, id, placement) {
     webspace.tech_webspace_id = id + 500000;
     webspace.slot_id = id + 900000;
     webspace.tech_mode = 'shared';
+    // Keep the documented seed intact; all newly created webspaces receive
+    // server-generated owner and account identities.
+    if (id !== SEEDED_WEBSPACE.id) {
+        webspace.owner = generateOwner(id);
+        webspace.accounts = (webspace.accounts ?? []).map((account, index) => ({
+            ...account,
+            account_id: id * 1000 + index + 1,
+            username: `u${id}${index + 1}`,
+        }));
+    }
     webspace.state ??= 'enabled';
     return webspace;
 }
@@ -104,6 +114,15 @@ function generatePlacement(id, region) {
         host: `webspace-${id}.${region ?? 'europe'}.mock.lan`,
         webspace_ipv4: `192.0.2.${id % 254 + 1}`,
         webspace_ipv6: `2001:db8::${id.toString(16)}`,
+    };
+}
+
+function generateOwner(id) {
+    return {
+        uid: id,
+        gid: id,
+        username: `o${id}`,
+        groupname: 'ftpusers',
     };
 }
 

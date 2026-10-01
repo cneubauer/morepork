@@ -2,5 +2,5 @@
 
 source "https://rubygems.org"
 
-gem "spectre-core"
+gem "spectre-core", path: "../../../../Tools/spectre/spectre-core"
 gem "spectre-http"

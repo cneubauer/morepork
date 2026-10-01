@@ -12,7 +12,7 @@ public class SpaceData
     /// </summary>
     /// <example>Linux</example>
     [Required]
-    public PlatformType? Platform { get; set; }
+    public PlatformType Platform { get; set; }
 
     /// <summary>
     /// For the most tenants it is a read-only property and can be ignored.
@@ -83,4 +83,3 @@ public class SpaceData
         public ulong? DiskQuotaInBytes { get; set; }
     }
 }
-

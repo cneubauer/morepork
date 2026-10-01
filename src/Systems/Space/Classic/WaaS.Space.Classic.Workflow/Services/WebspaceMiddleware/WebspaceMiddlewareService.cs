@@ -23,6 +23,30 @@ public class WebspaceMiddlewareService(HttpClient httpClient)
             IPv6 = backendModel.IPv6,
         };
 
+        if (backendModel.Owner is not null)
+        {
+            desiredState.Data.Space.Owner = new Space.DesiredState.Owner
+            {
+                Uid = backendModel.Owner.Uid ?? 0,
+                Gid = backendModel.Owner.Gid ?? 0,
+                Username = backendModel.Owner.Username ?? "",
+                Groupname = backendModel.Owner.Groupname ?? "",
+            };
+        }
+
+        foreach (var backendAccount in backendModel.Accounts ?? [])
+        {
+            var account = desiredState.Data.Space.Accounts
+                .Concat(desiredState.Data.Space.AdminAccounts)
+                .FirstOrDefault(account => account.ReferenceId == backendAccount.ExternalReference);
+
+            if (account is null)
+                continue;
+
+            account.AccountId = backendAccount.Id;
+            account.Username = backendAccount.Username ?? account.Username;
+        }
+
         desiredState.Data.Space.State = backendModel.State ?? desiredState.Data.Space.State;
 
         return desiredState;

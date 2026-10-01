@@ -6,13 +6,14 @@ using Scalar.AspNetCore;
 using WaaS.WebApi.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+var enumNamingPolicy = new LowercaseJsonNamingPolicy();
 
 builder.Configuration.AddKeyPerFile("/run/secrets", optional: true);
 
 var jsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
 {
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    Converters = { new JsonStringEnumConverter(enumNamingPolicy) }
 };
 
 builder.Services.AddOpenApi(options =>
@@ -20,10 +21,16 @@ builder.Services.AddOpenApi(options =>
     options.AddOperationTransformer(new SharedWebspaceOperationTransformer(jsonSerializerOptions));
 });
 
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(enumNamingPolicy));
+    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(enumNamingPolicy));
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 
