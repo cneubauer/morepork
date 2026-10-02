@@ -13,7 +13,7 @@ public static class DesiredStateStoreExtensions
     {
         await using var transaction = await store.BeginTransaction();
 
-        var systemInstanceId = givenSystemInstanceId ?? await store.CreateSystemInstanceId(stackInstance.Id);
+        var systemInstanceId = givenSystemInstanceId ?? await store.CreateSystemInstanceId(transaction, stackInstance.Id);
 
         await store.Lock(transaction, stackInstance.Id, systemInstanceId);
 

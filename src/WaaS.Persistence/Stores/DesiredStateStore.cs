@@ -170,7 +170,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         );
     }
 
-    public async Task<ulong> CreateSystemInstanceId(ulong stackInstanceId)
+    public async Task<ulong> CreateSystemInstanceId(NpgsqlTransaction transaction, ulong stackInstanceId)
     {
         const string sql = """
             INSERT INTO system_instance (stack_instance_id)
@@ -178,13 +178,10 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             RETURNING id;
             """;
 
-        using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-
-        var systemInstanceId = await connection.ExecuteScalarAsync<long>(sql, new
+        var systemInstanceId = await transaction.Connection.ExecuteScalarAsync<long>(sql, new
         {
             StackInstanceId = (long)stackInstanceId,
-        });
+        }, transaction);
 
         return (ulong)systemInstanceId;
     }

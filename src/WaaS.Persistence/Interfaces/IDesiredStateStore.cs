@@ -14,7 +14,7 @@ public interface IDesiredStateStore<TDesiredState>
     /// re-entrant within a transaction and released on commit or rollback.
     /// </remarks>
     Task Lock(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId);
-    Task<ulong> CreateSystemInstanceId(ulong stackInstanceId);
+    Task<ulong> CreateSystemInstanceId(NpgsqlTransaction transaction, ulong stackInstanceId);
     Task<IDesiredState<TDesiredState>> Build(Tenant tenant, IStackInstance stackInstance, ulong systemInstanceId, string transactionId);
     Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
     Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
