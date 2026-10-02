@@ -3,3 +3,4 @@
 refs/
 secrets/
 /*logs.csv
+**/vendor/
