@@ -195,6 +195,8 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
         await Workflow.ExecuteLocalActivityAsync(
             (PasswordActivities activities) => activities.CommitPasswordTokens(
                 context.Tenant.Name,
+                stackInstanceId,
+                systemInstanceId,
                 context.DesiredState.Data.Webspace.GetPasswordTokens()
             ),
             new()

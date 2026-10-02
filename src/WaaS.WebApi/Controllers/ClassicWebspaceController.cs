@@ -81,10 +81,6 @@ public class ClassicWebspaceController(
 
         #endregion
 
-        var systemInstanceId = givenSystemInstanceId ?? await desiredStateStore.CreateSystemInstanceId(stackInstanceId);
-
-        var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
-
         #region Rate Limit based on workflow queue
         // try
         // {
@@ -107,7 +103,7 @@ public class ClassicWebspaceController(
 
         #region Convert Credential
 
-        var newTokens = await passwordService.ConvertCredentials(tenant, stackInstanceId, systemInstanceId, webspace.GetPasswordInfos());
+        var newTokens = await passwordService.ConvertCredentials(tenant, webspace.GetPasswordInfos());
 
         #endregion
 
@@ -118,8 +114,7 @@ public class ClassicWebspaceController(
         var context = await desiredStateStore.Upsert(
             tenantEntity,
             stackInstance,
-            systemInstanceId,
-            isUpdate: givenSystemInstanceId is not null,
+            givenSystemInstanceId,
             transactionId,
             data => data.Webspace.Apply(webspace));
 
@@ -130,8 +125,13 @@ public class ClassicWebspaceController(
 
         #region Dispatch Workflow
 
+        var resourceId = $"webspace-{context.StackInstance.Id}-{context.DesiredState.SystemInstanceId}";
+
         var startOperation = WithStartWorkflowOperation.Create(
-            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishClassicWebspace(stackInstanceId, systemInstanceId),
+            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishClassicWebspace(
+                context.StackInstance.Id, 
+                context.DesiredState.SystemInstanceId
+            ),
             new WorkflowOptions
             {
                 Id = resourceId,
@@ -147,14 +147,14 @@ public class ClassicWebspaceController(
             }
         );
 
-        await desiredStateStore.RemoveOutboxMessage(transactionId);
+        await desiredStateStore.RemoveOutboxMessage(context.TransactionId);
 
         #endregion
 
         if (context.ValidationErrors.Count > 0)
             return BadRequest(new { Errors = context.ValidationErrors });
 
-        Response.Headers.Append("Transaction-Id", transactionId);
+        Response.Headers.Append("Transaction-Id", context.TransactionId);
 
         return Accepted(context.DesiredState!.Data.Space.ToViewModel(context.DesiredState.SystemInstanceId));
     }

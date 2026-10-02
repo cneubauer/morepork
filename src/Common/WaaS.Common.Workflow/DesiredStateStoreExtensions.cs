@@ -6,17 +6,18 @@ public static class DesiredStateStoreExtensions
         this IDesiredStateStore<TDesiredState> store,
         Tenant tenant,
         IStackInstance stackInstance,
-        ulong systemInstanceId,
-        bool isUpdate,
+        ulong? givenSystemInstanceId,
         string transactionId,
         Action<TDesiredState> apply
     ) where TDesiredState : IDesiredStateData, new()
     {
         await using var transaction = await store.BeginTransaction();
 
+        var systemInstanceId = givenSystemInstanceId ?? await store.CreateSystemInstanceId(stackInstance.Id);
+
         await store.Lock(transaction, stackInstance.Id, systemInstanceId);
 
-        var desiredState = isUpdate
+        var desiredState = givenSystemInstanceId.HasValue
             ? await store.Read(transaction, tenant.Id, stackInstance.Id, systemInstanceId)
             : await store.Build(tenant, stackInstance, systemInstanceId, transactionId);
 

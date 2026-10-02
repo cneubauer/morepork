@@ -16,7 +16,7 @@ public class PasswordActivities(HttpClient httpClient)
 
     // This method processes sensitive data and must not be temporal activity, unless the payloads are encrypted.
     // [Activity]
-    public async Task<IEnumerable<string>> ConvertCredentials(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<PasswordInfo> passwordInfos, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<string>> ConvertCredentials(string tenant, IEnumerable<PasswordInfo> passwordInfos, CancellationToken cancellationToken = default)
     {
         var passwordsToConvert = passwordInfos
             .Where(passwordInfo => passwordInfo.Credential.Password is not null)
@@ -32,11 +32,6 @@ public class PasswordActivities(HttpClient httpClient)
                 referenceId = x.ReferenceId,
                 password = x.Credential.Password,
                 systemType = x.PasswordType,
-                owner = new
-                {
-                    stackInstanceId,
-                    systemInstanceId,
-                }
             }),
         }, _jsonOptions, cancellationToken);
 
@@ -61,11 +56,16 @@ public class PasswordActivities(HttpClient httpClient)
     }
 
     [Activity]
-    public async Task CommitPasswordTokens(string tenant, IEnumerable<string> tokens)
+    public async Task CommitPasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<string> tokens)
     {
         var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens/commit", new
         {
             tokens,
+            owner = new
+            {
+                stackInstanceId,
+                systemInstanceId,
+            }
         });
 
         response.EnsureSuccessStatusCode();
