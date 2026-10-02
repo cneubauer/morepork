@@ -27,7 +27,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
 
 
     [WorkflowUpdateValidator(nameof(PublishDesiredState))]
-    public void ValidatePublishDesiredState(ProcessingContext<SharedWebspaceData> context, IEnumerable<string> passwordTokens)
+    public void ValidatePublishDesiredState(ProcessingContext<SharedWebspaceData> context)
     {
         if (_queue.Count >= 5)
             throw new ApplicationFailureException(
@@ -177,7 +177,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     }
 
     [WorkflowUpdate]
-    public async Task<ProcessingContext<SharedWebspaceData>> PublishDesiredState(ProcessingContext<SharedWebspaceData> context, IEnumerable<string> passwordTokens)
+    public async Task<ProcessingContext<SharedWebspaceData>> PublishDesiredState(ProcessingContext<SharedWebspaceData> context)
     {
         Workflow.UpsertTypedSearchAttributes(
             SearchAttributes.Tenant.ValueSet(context.Tenant.Name)

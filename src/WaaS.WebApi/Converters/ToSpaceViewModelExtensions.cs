@@ -87,7 +87,7 @@ public static class ToViewModelExtensions
         => new()
         {
             DiskQuota = entity.DiskQuota,
-            ResourceLevel = entity.ResourceLevel,
+            ResourceLevel = (ViewModel.ResourceLevel)entity.ResourceLevel,
             AutoQuota = entity.AutoQuota?.ToViewModel(),
         };
 

@@ -195,7 +195,7 @@ public class ClassicWebspaceController(
             });
 
         context = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(context, newTokens),
+            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(context),
             new WorkflowUpdateWithStartOptions(startOperation)
             {
                 Rpc = new() { CancellationToken = HttpContext.RequestAborted },
@@ -229,7 +229,7 @@ public class ClassicWebspaceController(
         return new WaasContext()
         {
             Tenant = tenantEntity,
-            StackInstance = stackInstance,
+            StackInstance = (StackInstance)stackInstance,
             TransactionId = transactionId,
         };
     }

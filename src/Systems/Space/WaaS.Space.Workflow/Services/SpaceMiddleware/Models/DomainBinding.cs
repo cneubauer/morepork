@@ -12,7 +12,7 @@ public class DomainBinding : ResourceBase
     [ReadOnly(true)]
     public ulong? Id { get; set; }
 
-    [JsonPropertyName("domainname")]
+    [JsonPropertyName("domain_name")]
     public string? DomainName { get; set; }
 
     /// <summary>

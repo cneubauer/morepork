@@ -1,5 +1,3 @@
-using WaaS.Space.Workflow;
-
 namespace WaaS.Space.Classic.Workflow;
 
 public static class ToBackendExtensions
@@ -52,12 +50,10 @@ public static class ToBackendExtensions
 
         if (spaceData.Limits != null)
         {
-            _ = Enum.TryParse(spaceData.Limits.ResourceLevel, out SpaceMiddleware.ResourceLevelType resourceLevel);
-
             techWebspace.Limits = new SpaceMiddleware.SpaceLimits
             {
                 DiskQuota = $"{spaceData.Limits.DiskQuota}b",
-                ResourceLevel = resourceLevel.ToString(),
+                ResourceLevel = spaceData.Limits.ResourceLevel.ToString(),
             };
         }
 

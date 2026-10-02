@@ -80,7 +80,7 @@ public interface IDesiredState
 /// Extends <see cref="IDesiredState"/> with typed access to the domain-specific resource data.
 /// </summary>
 /// <typeparam name="T">The type of the domain-specific desired state data.</typeparam>
-public interface IDesiredState<T> : IDesiredState where T : IDesiredStateData, new()
+public interface IDesiredState<T> : IDesiredState where T : IDesiredStateData
 {
     /// <summary>
     /// The domain-specific data representing the target configuration of the resource.

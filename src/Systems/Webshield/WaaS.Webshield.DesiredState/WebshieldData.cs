@@ -15,4 +15,10 @@ public class WebshieldData : IDesiredStateData
     /// </summary>
     public Dictionary<int, ulong> SubVersions { get; set; } = [];
     public DateTime? GetNextCheck() => null;
+
+    public void Tombstone()
+    {
+        Mappings.Clear();
+        Certificates.Clear();
+    }
 }

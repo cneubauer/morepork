@@ -1,7 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
-using WaaS.Common.ViewModel;
+﻿namespace WaaS.Space.ViewModel;
 
-namespace WaaS.Space.ViewModel;
+public enum ResourceLevel { XS, S, M, L, XL, XXL, Z }
 
 public class Limits
 {
@@ -15,8 +14,7 @@ public class Limits
     /// The resource level tier for this webspace.
     /// </summary>
     /// <example>M</example>
-    [Options("XS", "S", "M", "L", "XL", "XXL", "Z", AllowNull = true)]
-    public string? ResourceLevel { get; set; }
+    public ResourceLevel ResourceLevel { get; set; } = ResourceLevel.M;
 
     /// <summary>
     /// Configuration for automatic quota adjustment based on tenant profile rules.

@@ -11,7 +11,7 @@ public class DomainBinding<TEnvironment> : WaasResource, IDomainBinding
     /// </summary>
     public ulong? DomainId { get; set; }
 
-    [ItemKeyAttribute]
+    [ItemKey]
     public string DomainName { get; set; } = "";
 
     /// <summary>

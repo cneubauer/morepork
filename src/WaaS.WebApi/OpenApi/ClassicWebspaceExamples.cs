@@ -34,7 +34,7 @@ public static class ClassicWebspaceExamples
             Limits = new Vm.Limits
             {
                 DiskQuota = 5000000000,
-                ResourceLevel = "M"
+                ResourceLevel = Vm.ResourceLevel.M
             },
             Owner = new Vm.SpaceOwner
             {
