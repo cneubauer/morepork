@@ -20,22 +20,11 @@ public class ActualStateController(ITemporalClient temporalClient, ILogger<Actua
         [FromRoute] string transactionId
     )
     {
-        try
-        {
-            var workflowHandle = temporalClient.GetWorkflowHandle<PublishClassicWebspaceWorkflow>(resourceId);
-            await workflowHandle.SignalAsync(
-                workflow => workflow.ReceiveBackendNotification(transactionId)
-            );
-        }
-        catch (Exception ex)
-        {
-            var fallbackId = $"{resourceId}-{transactionId}";
-            logger.LogWarning(ex, "Could not signal workflow with resourceId {ResourceId}, trying fallback {FallbackId}", resourceId, fallbackId);
-            var workflowHandle = temporalClient.GetWorkflowHandle<PublishClassicWebspaceWorkflow>(fallbackId);
-            await workflowHandle.SignalAsync(
-                workflow => workflow.ReceiveBackendNotification(transactionId)
-            );
-        }
+        var workflowHandle = temporalClient.GetWorkflowHandle<PublishClassicWebspaceWorkflow>(resourceId);
+
+        await workflowHandle.SignalAsync(
+            workflow => workflow.ReceiveBackendNotification(transactionId)
+        );
 
         return Ok();
     }

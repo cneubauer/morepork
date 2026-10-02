@@ -32,7 +32,7 @@ public class ClassicWebspaceController(
         [FromRoute] ulong stackInstanceId,
         [FromBody] Space.Classic.ViewModel.SharedWebspace webspace,
         [FromHeader(Name = "Transaction-Id")] string? transactionId
-    ) => ProvisionClassicWebspace<SharedWebspaceData>(
+    ) => ProvisionClassicWebspace(
         tenant,
         stackInstanceId,
         systemInstanceId: null,
@@ -92,7 +92,7 @@ public class ClassicWebspaceController(
         [FromRoute] ulong systemInstanceId,
         [FromBody] Space.Classic.ViewModel.SharedWebspace webspace,
         [FromHeader(Name = "Transaction-Id")] string? transactionId
-    ) => ProvisionClassicWebspace<SharedWebspaceData>(
+    ) => ProvisionClassicWebspace(
         tenant,
         stackInstanceId,
         systemInstanceId,
@@ -118,7 +118,7 @@ public class ClassicWebspaceController(
         [FromRoute] ulong stackInstanceId,
         [FromRoute] ulong systemInstanceId,
         [FromHeader(Name = "Transaction-Id")] string? transactionId
-    ) => ProvisionClassicWebspace<SharedWebspaceData>(
+    ) => ProvisionClassicWebspace(
         tenant,
         stackInstanceId,
         systemInstanceId,
@@ -127,14 +127,14 @@ public class ClassicWebspaceController(
         transactionId ?? $"waas-delete-{Guid.NewGuid()}"
     );
 
-    private async Task<IActionResult> ProvisionClassicWebspace<TDesiredState>(
+    private async Task<IActionResult> ProvisionClassicWebspace(
         string tenant,
         ulong stackInstanceId,
         ulong? systemInstanceId,
         IEnumerable<PasswordInfo> passwordInfos,
         Action<IDesiredState<SharedWebspaceData>> modify,
         string transactionId
-    ) where TDesiredState : IDesiredStateData, new()
+    )
     {
         var waasContext = await CreateWaasContext(tenant, stackInstanceId, transactionId);
 
@@ -166,7 +166,7 @@ public class ClassicWebspaceController(
 
         var newTokens = await passwordService.ConvertCredentials(waasContext.Tenant.Name, passwordInfos);
 
-        var context = await desiredStateStore.Upsert(waasContext, systemInstanceId, modify);
+        var context = await Upsert(waasContext, systemInstanceId, modify);
 
         if (context is null)
             return NotFound();
@@ -178,8 +178,18 @@ public class ClassicWebspaceController(
             newTokens
         );
 
-        #region Dispatch Workflow
+        context = await Dispatch(context);
 
+        if (context.ValidationErrors.Count > 0)
+            return BadRequest(new { Errors = context.ValidationErrors });
+
+        Response.Headers.Append("Transaction-Id", context.TransactionId);
+
+        return Accepted(context.DesiredState!.Data.Space.ToViewModel(context.DesiredState.SystemInstanceId));
+    }
+
+    private async Task<ProcessingContext<SharedWebspaceData>> Dispatch(ProcessingContext<SharedWebspaceData> context)
+    {
         var resourceId = $"webspace-{context.StackInstance.Id}-{context.DesiredState.SystemInstanceId}";
 
         var startOperation = WithStartWorkflowOperation.Create(
@@ -204,14 +214,46 @@ public class ClassicWebspaceController(
 
         await desiredStateStore.RemoveOutboxMessage(context.TransactionId);
 
-        #endregion
+        return context;
+    }
 
-        if (context.ValidationErrors.Count > 0)
-            return BadRequest(new { Errors = context.ValidationErrors });
+    private async Task<ProcessingContext<SharedWebspaceData>?> Upsert(
+        WaasContext context,
+        ulong? givenSystemInstanceId,
+        Action<IDesiredState<SharedWebspaceData>> modify
+    )
+    {
+        await using var transaction = await desiredStateStore.BeginTransaction();
 
-        Response.Headers.Append("Transaction-Id", context.TransactionId);
+        var systemInstanceId = givenSystemInstanceId ?? await desiredStateStore.CreateSystemInstanceId(transaction, context.StackInstance.Id);
 
-        return Accepted(context.DesiredState!.Data.Space.ToViewModel(context.DesiredState.SystemInstanceId));
+        await desiredStateStore.Lock(transaction, context.StackInstance.Id, systemInstanceId);
+
+        var desiredState = givenSystemInstanceId.HasValue
+            ? await desiredStateStore.Read(transaction, context.Tenant.Id, context.StackInstance.Id, systemInstanceId)
+            : DesiredState<SharedWebspaceData>.Create(context.Tenant, context.StackInstance, systemInstanceId, context.TransactionId);
+
+        if (desiredState is null)
+            return null;
+
+        modify(desiredState);
+
+        var saveResult = await desiredStateStore.Save(transaction, desiredState, context.TransactionId);
+
+        var desiredStateContext = new ProcessingContext<SharedWebspaceData>()
+        {
+            Tenant = context.Tenant,
+            StackInstance = context.StackInstance,
+            DesiredState = (DesiredState<SharedWebspaceData>)saveResult.Current,
+            TransactionId = context.TransactionId,
+            Changes = saveResult.Changes,
+        };
+
+        await desiredStateStore.AddOutboxMessage(transaction, desiredStateContext);
+
+        await transaction.CommitAsync();
+
+        return desiredStateContext;
     }
 
     private async Task<WaasContext?> CreateWaasContext(string tenant, ulong stackInstanceId, string transactionId)
