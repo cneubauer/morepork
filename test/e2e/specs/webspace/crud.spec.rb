@@ -1,7 +1,5 @@
 describe 'morepork' do
   it 'does create, read, update and delete a shared webspace', tags: [:webspace, :create, :read, :update, :delete] do
-    log 'doing some http request'
-
     stack_id = 1234567
 
     group 'create webspace' do
@@ -29,7 +27,6 @@ describe 'morepork' do
     system_id = response.json.systemInstanceId
 
     group 'read webspace' do
-
 
       http 'morepork' do
         get "#{env.tenant}/stack-instances/#{stack_id}/webspaces/#{system_id}"
