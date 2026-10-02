@@ -8,6 +8,23 @@ namespace WaaS.Persistence;
 /// <typeparam name="T"></typeparam>
 public class DesiredState<T> : IDesiredState<T> where T : IDesiredStateData, new()
 {
+    public static DesiredState<T> Create(
+        Tenant tenant,
+        IStackInstance stackInstance,
+        ulong systemInstanceId,
+        string transactionId
+    )
+    {
+        return new DesiredState<T>
+        {
+            StackInstanceId = stackInstance.Id,
+            Tenant = tenant.Id,
+            Zone = stackInstance.Zone,
+            TransactionId = transactionId,
+            SystemInstanceId = systemInstanceId,
+        };
+    }
+
     #region Required Properties
     
     public required ulong StackInstanceId { get; init; }
@@ -41,8 +58,9 @@ public class DesiredState<T> : IDesiredState<T> where T : IDesiredStateData, new
 
     #endregion
 
-    void IDesiredState.Tombstone()
+    public void Tombstone()
     {
+        Data.Tombstone();
         Tombstoned = true;
     }
 

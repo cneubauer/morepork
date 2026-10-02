@@ -6,7 +6,7 @@ namespace WaaS.Common.Workflow;
 record TokenInfo(string ReferenceId, string Token);
 record TokensResponse(TokenInfo[] Tokens);
 
-public class PasswordActivities(HttpClient httpClient)
+public class PasswordStore(HttpClient httpClient)
 {
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {

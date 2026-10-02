@@ -19,4 +19,11 @@ public class SharedWebspaceData : IDesiredStateData, ISpaceData<SharedWebspace>
     /// This is the interface implementation for <see cref="IDesiredStateData"/>
     /// </summary>
     public DateTime? GetNextCheck() => Webspace.CalculateNextCheckTimestamp();
+
+    public void Tombstone()
+    {
+        Webspace.Domains.Clear();
+        Webspace.Accounts.Clear();
+        Webspace.MailConfiguration = null;
+    }
 }

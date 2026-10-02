@@ -74,18 +74,18 @@ public interface IDesiredState
     /// The ID of the transaction that last modified this desired state.
     /// </summary>
     string TransactionId { get; }
-
-    void Tombstone();
 }
 
 /// <summary>
 /// Extends <see cref="IDesiredState"/> with typed access to the domain-specific resource data.
 /// </summary>
 /// <typeparam name="T">The type of the domain-specific desired state data.</typeparam>
-public interface IDesiredState<T> : IDesiredState
+public interface IDesiredState<T> : IDesiredState where T : IDesiredStateData, new()
 {
     /// <summary>
     /// The domain-specific data representing the target configuration of the resource.
     /// </summary>
     T Data { get; }
+
+    void Tombstone();
 }

@@ -1,6 +1,6 @@
 namespace WaaS.Persistence;
 
-public interface IDesiredStateStore<TDesiredState>
+public interface IDesiredStateStore<TDesiredState> where TDesiredState : IDesiredStateData, new()
 {
     Task<NpgsqlTransaction> BeginTransaction();
 
@@ -15,7 +15,6 @@ public interface IDesiredStateStore<TDesiredState>
     /// </remarks>
     Task Lock(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId);
     Task<ulong> CreateSystemInstanceId(NpgsqlTransaction transaction, ulong stackInstanceId);
-    Task<IDesiredState<TDesiredState>> Build(Tenant tenant, IStackInstance stackInstance, ulong systemInstanceId, string transactionId);
     Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
     Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
     Task<DesiredStateSaveResult<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false);

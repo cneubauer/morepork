@@ -43,7 +43,7 @@ builder.Services.AddScoped<IStackInstanceStore>(
 builder.Services.AddDesiredStateStore<SharedWebspaceData>(waasConnectionString);
 builder.Services.AddTenantStore(waasConnectionString);
 
-builder.Services.AddHttpClient<PasswordActivities>(
+builder.Services.AddHttpClient<PasswordStore>(
         client => client.BaseAddress = new Uri(builder.Configuration["PasswordStore:BaseUrl"]
             ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
     );

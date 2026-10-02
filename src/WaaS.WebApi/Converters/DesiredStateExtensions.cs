@@ -2,12 +2,14 @@ namespace WaaS.WebApi;
 
 public static class DesiredStateExtensions
 {
-    public static void Apply(this SharedWebspace desiredState, Space.Classic.ViewModel.SharedWebspace viewModel)
+    public static void Apply(this IDesiredState<SharedWebspaceData> desiredState, Space.Classic.ViewModel.SharedWebspace viewModel)
     {
-        if (viewModel.Data.Platform is { } platform)
-            desiredState.Platform = (Platform)platform;
+        var webspace = desiredState.Data.Webspace;
 
-        desiredState.MailConfiguration = viewModel.MailConfiguration is null
+        if (viewModel.Data.Platform is { } platform)
+            webspace.Platform = (Platform)platform;
+
+        webspace.MailConfiguration = viewModel.MailConfiguration is null
             ? null
             : new Space.DesiredState.MailConfiguration
             {
@@ -21,12 +23,12 @@ public static class DesiredStateExtensions
 
         foreach (var domainViewModel in viewModel.Domains ?? [])
         {
-            var existingDomain = desiredState.Domains.FirstOrDefault(x => x.DomainName == domainViewModel.Domain);
+            var existingDomain = webspace.Domains.FirstOrDefault(x => x.DomainName == domainViewModel.Domain);
 
             if (existingDomain is not null)
                 existingDomain.Apply(domainViewModel);
             else
-                desiredState.Domains.Add(new()
+                webspace.Domains.Add(new()
                 {
                     DomainName = domainViewModel.Domain,
                     Environment = domainViewModel.Environment,
@@ -35,12 +37,12 @@ public static class DesiredStateExtensions
 
         foreach (var account in viewModel.Accounts ?? [])
         {
-            var existingAccount = desiredState.Accounts.FirstOrDefault(x => x.Username == account.Username);
+            var existingAccount = webspace.Accounts.FirstOrDefault(x => x.Username == account.Username);
 
             if (existingAccount is not null)
                 existingAccount.Apply(account);
             else
-                desiredState.Accounts.Add(new()
+                webspace.Accounts.Add(new()
                 {
                     ReferenceId = Guid.NewGuid().ToString(),
                     ExtReference = account.ExtReference,
@@ -49,7 +51,7 @@ public static class DesiredStateExtensions
         }
 
         var domains = viewModel.Domains?.Select(x => x.Domain) ?? [];
-        desiredState.Domains.RemoveAll(x => !domains.Contains(x.DomainName));
+        webspace.Domains.RemoveAll(x => !domains.Contains(x.DomainName));
     }
 
     private static void Apply(this DomainBinding<string> desiredState, Space.Classic.ViewModel.DomainBinding viewModel)

@@ -4,43 +4,41 @@ public static class DesiredStateStoreExtensions
 {
     public static async Task<ProcessingContext<TDesiredState>?> Upsert<TDesiredState>(
         this IDesiredStateStore<TDesiredState> store,
-        Tenant tenant,
-        IStackInstance stackInstance,
+        WaasContext context,
         ulong? givenSystemInstanceId,
-        string transactionId,
-        Action<TDesiredState> apply
+        Action<IDesiredState<TDesiredState>> modify
     ) where TDesiredState : IDesiredStateData, new()
     {
         await using var transaction = await store.BeginTransaction();
 
-        var systemInstanceId = givenSystemInstanceId ?? await store.CreateSystemInstanceId(transaction, stackInstance.Id);
+        var systemInstanceId = givenSystemInstanceId ?? await store.CreateSystemInstanceId(transaction, context.StackInstance.Id);
 
-        await store.Lock(transaction, stackInstance.Id, systemInstanceId);
+        await store.Lock(transaction, context.StackInstance.Id, systemInstanceId);
 
         var desiredState = givenSystemInstanceId.HasValue
-            ? await store.Read(transaction, tenant.Id, stackInstance.Id, systemInstanceId)
-            : await store.Build(tenant, stackInstance, systemInstanceId, transactionId);
+            ? await store.Read(transaction, context.Tenant.Id, context.StackInstance.Id, systemInstanceId)
+            : DesiredState<TDesiredState>.Create(context.Tenant, context.StackInstance, systemInstanceId, context.TransactionId);
 
         if (desiredState is null)
             return null;
 
-        apply(desiredState.Data);
+        modify(desiredState);
 
-        var saveResult = await store.Save(transaction, desiredState, transactionId);
+        var saveResult = await store.Save(transaction, desiredState, context.TransactionId);
 
-        var context = new ProcessingContext<TDesiredState>()
+        var desiredStateContext = new ProcessingContext<TDesiredState>()
         {
-            Tenant = tenant,
-            StackInstance = stackInstance,
+            Tenant = context.Tenant,
+            StackInstance = context.StackInstance,
             DesiredState = (DesiredState<TDesiredState>)saveResult.Current,
-            TransactionId = transactionId,
+            TransactionId = context.TransactionId,
             Changes = saveResult.Changes,
         };
 
-        await store.AddOutboxMessage(transaction, context);
+        await store.AddOutboxMessage(transaction, desiredStateContext);
 
         await transaction.CommitAsync();
 
-        return context;
+        return desiredStateContext;
     }
 }

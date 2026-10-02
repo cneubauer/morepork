@@ -26,7 +26,7 @@ builder.Services.AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Websp
             ?? throw new InvalidOperationException("Missing WebspaceMiddleware:BaseUrl"))
     );
 
-builder.Services.AddHttpClient<PasswordActivities>(
+builder.Services.AddHttpClient<PasswordStore>(
         client => client.BaseAddress = new Uri(builder.Configuration["PasswordStore:BaseUrl"]
             ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
     );
@@ -38,7 +38,7 @@ builder.Services
         "space-classic")
     .AddScopedActivities<WaasActivities<SharedWebspaceData>>()
     .AddScopedActivities<ClassicWebspaceActivities>()
-    .AddScopedActivities<PasswordActivities>()
+    .AddScopedActivities<PasswordStore>()
     .AddWorkflow<PublishClassicWebspaceWorkflow>();
 
 builder.Services.AddHealthChecks()

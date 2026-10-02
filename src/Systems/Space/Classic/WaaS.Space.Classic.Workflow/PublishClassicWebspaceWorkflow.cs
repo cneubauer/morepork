@@ -27,7 +27,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
 
 
     [WorkflowUpdateValidator(nameof(PublishDesiredState))]
-    public void ValidatePublishDesiredState(ProcessingContext<SharedWebspaceData> context)
+    public void ValidatePublishDesiredState(ProcessingContext<SharedWebspaceData> context, IEnumerable<string> passwordTokens)
     {
         if (_queue.Count >= 5)
             throw new ApplicationFailureException(
@@ -149,7 +149,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             if (stalePasswordTokens.Count > 0)
             {
                 await Workflow.ExecuteLocalActivityAsync(
-                    (PasswordActivities activities) => activities.DeletePasswordTokens(
+                    (PasswordStore activities) => activities.DeletePasswordTokens(
                         context.Tenant.Name,
                         stalePasswordTokens
                     ),
@@ -177,7 +177,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     }
 
     [WorkflowUpdate]
-    public async Task<ProcessingContext<SharedWebspaceData>> PublishDesiredState(ProcessingContext<SharedWebspaceData> context)
+    public async Task<ProcessingContext<SharedWebspaceData>> PublishDesiredState(ProcessingContext<SharedWebspaceData> context, IEnumerable<string> passwordTokens)
     {
         Workflow.UpsertTypedSearchAttributes(
             SearchAttributes.Tenant.ValueSet(context.Tenant.Name)
@@ -191,20 +191,6 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
         );
 
         _pending.Add(context.TransactionId);
-
-        await Workflow.ExecuteLocalActivityAsync(
-            (PasswordActivities activities) => activities.CommitPasswordTokens(
-                context.Tenant.Name,
-                stackInstanceId,
-                systemInstanceId,
-                context.DesiredState.Data.Webspace.GetPasswordTokens()
-            ),
-            new()
-            {
-                StartToCloseTimeout = TimeSpan.FromSeconds(15),
-                Summary = "Sending Desired State to TechMW",
-            }
-        );
 
         context = await Workflow.ExecuteLocalActivityAsync(
             (ClassicWebspaceActivities activities) => activities.SendToTechMw(context),

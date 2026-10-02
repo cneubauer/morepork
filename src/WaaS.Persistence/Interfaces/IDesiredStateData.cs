@@ -14,4 +14,6 @@ public interface IDesiredStateData
     /// against the actual state reported by the backend system.
     /// </summary>
     DateTime? GetNextCheck();
+
+    void Tombstone();
 }
