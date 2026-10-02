@@ -17,7 +17,7 @@ public interface IDesiredStateStore<TDesiredState>
     Task<ulong> CreateSystemInstanceId(ulong stackInstanceId);
     Task<IDesiredState<TDesiredState>> Build(Tenant tenant, IStackInstance stackInstance, ulong systemInstanceId, string transactionId);
     Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
-    Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
+    Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
     Task<DesiredStateSaveResult<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false);
     Task<DesiredStateSaveResult<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false);
     Task MarkAsApplied(string transactionId);

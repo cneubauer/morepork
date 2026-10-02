@@ -244,7 +244,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             Version = (long?)version,
         });
     }
-    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
+
+    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         return await transaction.Connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
         {

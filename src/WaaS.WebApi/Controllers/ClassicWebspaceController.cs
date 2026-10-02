@@ -113,35 +113,18 @@ public class ClassicWebspaceController(
 
         #region Update Desired State
 
-        await using var transaction = await desiredStateStore.BeginTransaction();
-
-        await desiredStateStore.Lock(transaction, stackInstanceId, systemInstanceId);
-
         // If a system instance ID was provided, we are updating an existing desired state;
         // otherwise, we are creating a new one.
-        var desiredState = givenSystemInstanceId is not null
-            ? await desiredStateStore.Read(transaction, tenantEntity.Id, stackInstanceId, systemInstanceId)
-            : await desiredStateStore.Build(tenantEntity, stackInstance, systemInstanceId, transactionId);
+        var context = await desiredStateStore.Upsert(
+            tenantEntity,
+            stackInstance,
+            systemInstanceId,
+            isUpdate: givenSystemInstanceId is not null,
+            transactionId,
+            data => data.Webspace.Apply(webspace));
 
-        if (desiredState is null)
+        if (context is null)
             return NotFound();
-
-        desiredState.Data.Webspace.Apply(webspace);
-
-        var saveResult = await desiredStateStore.Save(transaction, desiredState, transactionId);
-
-        ProcessingContext<SharedWebspaceData> context = new()
-        {
-            Tenant = tenantEntity,
-            StackInstance = (StackInstance)stackInstance,
-            DesiredState = (DesiredState<SharedWebspaceData>)saveResult.Current,
-            TransactionId = transactionId,
-            Changes = saveResult.Changes,
-        };
-
-        await desiredStateStore.AddOutboxMessage(transaction, context);
-
-        await transaction.CommitAsync();
 
         #endregion
 
