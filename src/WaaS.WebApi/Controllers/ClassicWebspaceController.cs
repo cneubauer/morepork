@@ -149,23 +149,31 @@ public class ClassicWebspaceController(
         // TODO: Add Desired State consistency validation
 
         #region Rate Limit based on workflow queue
-        // try
-        // {
-        //     var pending = await temporalClient
-        //         .GetWorkflowHandle<PublishClassicWebspaceWorkflow>(resourceId)
-        //         .QueryAsync(wf => wf.PendingTransactions);
 
-        //     if (pending.Count >= MaxQueueDepth)
-        //     {
-        //         Response.Headers.RetryAfter = "5";
-        //         return StatusCode(StatusCodes.Status503ServiceUnavailable,
-        //             new { Error = "Too many in-flight transactions for this webspace." });
-        //     }
-        // }
-        // catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
-        // {
-        //     // No run yet — nothing queued.
-        // }
+        if (systemInstanceId is not null)
+            try
+            {
+                var resourceId = $"webspace-{stackInstanceId}-{systemInstanceId}";
+
+                var pending = await temporalClient
+                    .GetWorkflowHandle<PublishClassicWebspaceWorkflow>(resourceId)
+                    .QueryAsync(wf => wf.PendingTransactions);
+
+                if (pending.Count >= 5)
+                {
+                    Response.Headers.RetryAfter = "5";
+
+                    return StatusCode(
+                        StatusCodes.Status429TooManyRequests,
+                        new { Error = "Too many in-flight transactions for this webspace." }
+                    );
+                }
+            }
+            catch (Temporalio.Exceptions.RpcException e) when (e.Code == Temporalio.Exceptions.RpcException.StatusCode.NotFound)
+            {
+                // Nothing queued.
+            }
+
         #endregion
 
         var context = await Upsert(waasContext, systemInstanceId, passwordInfos, modify, cancellationToken);
@@ -183,33 +191,24 @@ public class ClassicWebspaceController(
         return Accepted(context.DesiredState!.Data.Space.ToViewModel(context.DesiredState.SystemInstanceId));
     }
 
-    private async Task<ProcessingContext<SharedWebspaceData>> Dispatch(ProcessingContext<SharedWebspaceData> context)
+    private async Task<WaasContext?> CreateWaasContext(string tenant, ulong stackInstanceId, string transactionId, CancellationToken cancellationToken)
     {
-        var resourceId = $"webspace-{context.StackInstance.Id}-{context.DesiredState.SystemInstanceId}";
+        var tenantEntity = await tenantStore.Read(tenant, cancellationToken);
 
-        var startOperation = WithStartWorkflowOperation.Create(
-            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishClassicWebspace(
-                context.StackInstance.Id, 
-                context.DesiredState.SystemInstanceId
-            ),
-            new WorkflowOptions
-            {
-                Id = resourceId,
-                TaskQueue = "space-classic",
-                IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
-            });
+        if (tenantEntity is null)
+            return null;
 
-        context = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
-            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(context),
-            new WorkflowUpdateWithStartOptions(startOperation)
-            {
-                Rpc = new() { CancellationToken = HttpContext.RequestAborted },
-            }
-        );
+        var stackInstance = await stackInstanceStore.Read(stackInstanceId, cancellationToken);
 
-        await desiredStateStore.RemoveOutboxMessage(context.TransactionId);
+        if (stackInstance is null || stackInstance.TenantId != tenantEntity.Id)
+            return null;
 
-        return context;
+        return new WaasContext()
+        {
+            Tenant = tenantEntity,
+            StackInstance = (StackInstance)stackInstance,
+            TransactionId = transactionId,
+        };
     }
 
     private async Task<ProcessingContext<SharedWebspaceData>?> Upsert(
@@ -256,23 +255,32 @@ public class ClassicWebspaceController(
         return desiredStateContext;
     }
 
-    private async Task<WaasContext?> CreateWaasContext(string tenant, ulong stackInstanceId, string transactionId, CancellationToken cancellationToken)
+    private async Task<ProcessingContext<SharedWebspaceData>> Dispatch(ProcessingContext<SharedWebspaceData> context)
     {
-        var tenantEntity = await tenantStore.Read(tenant, cancellationToken);
+        var resourceId = $"webspace-{context.StackInstance.Id}-{context.DesiredState.SystemInstanceId}";
 
-        if (tenantEntity is null)
-            return null;
+        var startOperation = WithStartWorkflowOperation.Create(
+            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishClassicWebspace(
+                context.StackInstance.Id, 
+                context.DesiredState.SystemInstanceId
+            ),
+            new WorkflowOptions
+            {
+                Id = resourceId,
+                TaskQueue = "space-classic",
+                IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
+            });
 
-        var stackInstance = await stackInstanceStore.Read(stackInstanceId, cancellationToken);
+        context = await temporalClient.ExecuteUpdateWithStartWorkflowAsync(
+            (PublishClassicWebspaceWorkflow workflow) => workflow.PublishDesiredState(context),
+            new WorkflowUpdateWithStartOptions(startOperation)
+            {
+                Rpc = new() { CancellationToken = HttpContext.RequestAborted },
+            }
+        );
 
-        if (stackInstance is null || stackInstance.TenantId != tenantEntity.Id)
-            return null;
+        await desiredStateStore.RemoveOutboxMessage(context.TransactionId);
 
-        return new WaasContext()
-        {
-            Tenant = tenantEntity,
-            StackInstance = (StackInstance)stackInstance,
-            TransactionId = transactionId,
-        };
+        return context;
     }
 }
