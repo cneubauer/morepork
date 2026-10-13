@@ -10,12 +10,12 @@ public interface ITenantStore
     /// </summary>
     /// <param name="tenantName">The unique name of the tenant.</param>
     /// <returns>The tenant.</returns>
-    Task<Tenant?> Get(string tenantName);
+    Task<Tenant?> Read(string tenantName, CancellationToken cancellationToken);
 
     /// <summary>
     /// Retrieves the tenant with the given ID.
     /// </summary>
     /// <param name="tenantId">The unique ID of the tenant.</param>
     /// <returns>The tenant.</returns>
-    Task<Tenant?> Read(short tenantId);
+    Task<Tenant?> Read(short tenantId, CancellationToken cancellationToken);
 }

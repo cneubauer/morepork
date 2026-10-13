@@ -11,7 +11,7 @@ public class ClassicWebspaceController(
     ITenantStore tenantStore,
     IStackInstanceStore stackInstanceStore,
     IDesiredStateStore<SharedWebspaceData> desiredStateStore,
-    PasswordStore passwordService
+    PasswordService passwordService
 ) : ControllerBase
 {
 
@@ -38,7 +38,8 @@ public class ClassicWebspaceController(
         systemInstanceId: null,
         webspace.GetPasswordInfos(),
         desiredState => desiredState.Apply(webspace),
-        transactionId ?? $"waas-create-{Guid.NewGuid()}"
+        transactionId ?? $"waas-create-{Guid.NewGuid()}",
+        HttpContext.RequestAborted
     );
 
     /// <summary>
@@ -58,12 +59,12 @@ public class ClassicWebspaceController(
         [FromRoute] ulong systemInstanceId
     )
     {
-        var waasContext = await CreateWaasContext(tenant, stackInstanceId, transactionId: "");
+        var waasContext = await CreateWaasContext(tenant, stackInstanceId, transactionId: "", cancellationToken: HttpContext.RequestAborted);
 
         if (waasContext is null)
             return NotFound();
 
-        var desiredState = await desiredStateStore.Read(waasContext.Tenant.Id, stackInstanceId, systemInstanceId);
+        var desiredState = await desiredStateStore.Read(waasContext.Tenant.Id, stackInstanceId, systemInstanceId, cancellationToken: HttpContext.RequestAborted);
 
         if (desiredState is null)
             return NotFound();
@@ -98,7 +99,8 @@ public class ClassicWebspaceController(
         systemInstanceId,
         webspace.GetPasswordInfos(),
         desiredState => desiredState.Apply(webspace),
-        transactionId ?? $"waas-update-{Guid.NewGuid()}"
+        transactionId ?? $"waas-update-{Guid.NewGuid()}",
+        HttpContext.RequestAborted
     );
 
     /// <summary>
@@ -124,7 +126,8 @@ public class ClassicWebspaceController(
         systemInstanceId,
         [],
         desiredState => desiredState.Tombstone(),
-        transactionId ?? $"waas-delete-{Guid.NewGuid()}"
+        transactionId ?? $"waas-delete-{Guid.NewGuid()}",
+        HttpContext.RequestAborted
     );
 
     private async Task<IActionResult> ProvisionClassicWebspace(
@@ -133,10 +136,11 @@ public class ClassicWebspaceController(
         ulong? systemInstanceId,
         IEnumerable<PasswordInfo> passwordInfos,
         Action<IDesiredState<SharedWebspaceData>> modify,
-        string transactionId
+        string transactionId,
+        CancellationToken cancellationToken
     )
     {
-        var waasContext = await CreateWaasContext(tenant, stackInstanceId, transactionId);
+        var waasContext = await CreateWaasContext(tenant, stackInstanceId, transactionId, cancellationToken);
 
         if (waasContext is null)
             return NotFound();
@@ -164,19 +168,10 @@ public class ClassicWebspaceController(
         // }
         #endregion
 
-        var newTokens = await passwordService.ConvertCredentials(waasContext.Tenant.Name, passwordInfos);
-
-        var context = await Upsert(waasContext, systemInstanceId, modify);
+        var context = await Upsert(waasContext, systemInstanceId, passwordInfos, modify, cancellationToken);
 
         if (context is null)
             return NotFound();
-
-        await passwordService.CommitPasswordTokens(
-            context.Tenant.Name,
-            context.StackInstance.Id,
-            context.DesiredState.SystemInstanceId,
-            newTokens
-        );
 
         context = await Dispatch(context);
 
@@ -218,34 +213,39 @@ public class ClassicWebspaceController(
     }
 
     private async Task<ProcessingContext<SharedWebspaceData>?> Upsert(
-        WaasContext context,
+        WaasContext waasContext,
         ulong? givenSystemInstanceId,
-        Action<IDesiredState<SharedWebspaceData>> modify
+        IEnumerable<PasswordInfo> passwordInfos,
+        Action<IDesiredState<SharedWebspaceData>> modify,
+        CancellationToken cancellationToken
     )
     {
         await using var transaction = await desiredStateStore.BeginTransaction();
 
-        var systemInstanceId = givenSystemInstanceId ?? await desiredStateStore.CreateSystemInstanceId(transaction, context.StackInstance.Id);
+        // Note that this is an external call and must not block too long, as it holds the database connections open
+        await passwordService.CreatePasswordTokens(waasContext.Tenant.Name, passwordInfos, cancellationToken);
 
-        await desiredStateStore.Lock(transaction, context.StackInstance.Id, systemInstanceId);
+        var systemInstanceId = givenSystemInstanceId ?? await desiredStateStore.CreateSystemInstanceId(transaction, waasContext.StackInstance.Id);
+
+        await desiredStateStore.Lock(transaction, waasContext.StackInstance.Id, systemInstanceId);
 
         var desiredState = givenSystemInstanceId.HasValue
-            ? await desiredStateStore.Read(transaction, context.Tenant.Id, context.StackInstance.Id, systemInstanceId)
-            : DesiredState<SharedWebspaceData>.Create(context.Tenant, context.StackInstance, systemInstanceId, context.TransactionId);
+            ? await desiredStateStore.Read(transaction, waasContext.Tenant.Id, waasContext.StackInstance.Id, systemInstanceId)
+            : DesiredState<SharedWebspaceData>.Create(waasContext.Tenant, waasContext.StackInstance, systemInstanceId, waasContext.TransactionId);
 
         if (desiredState is null)
             return null;
 
         modify(desiredState);
 
-        var saveResult = await desiredStateStore.Save(transaction, desiredState, context.TransactionId);
+        var saveResult = await desiredStateStore.Save(transaction, desiredState, waasContext.TransactionId);
 
         var desiredStateContext = new ProcessingContext<SharedWebspaceData>()
         {
-            Tenant = context.Tenant,
-            StackInstance = context.StackInstance,
+            Tenant = waasContext.Tenant,
+            StackInstance = waasContext.StackInstance,
             DesiredState = (DesiredState<SharedWebspaceData>)saveResult.Current,
-            TransactionId = context.TransactionId,
+            TransactionId = waasContext.TransactionId,
             Changes = saveResult.Changes,
         };
 
@@ -256,14 +256,14 @@ public class ClassicWebspaceController(
         return desiredStateContext;
     }
 
-    private async Task<WaasContext?> CreateWaasContext(string tenant, ulong stackInstanceId, string transactionId)
+    private async Task<WaasContext?> CreateWaasContext(string tenant, ulong stackInstanceId, string transactionId, CancellationToken cancellationToken)
     {
-        var tenantEntity = await tenantStore.Get(tenant);
+        var tenantEntity = await tenantStore.Read(tenant, cancellationToken);
 
         if (tenantEntity is null)
             return null;
 
-        var stackInstance = await stackInstanceStore.Read(stackInstanceId);
+        var stackInstance = await stackInstanceStore.Read(stackInstanceId, cancellationToken);
 
         if (stackInstance is null || stackInstance.TenantId != tenantEntity.Id)
             return null;

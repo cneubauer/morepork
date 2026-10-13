@@ -2,7 +2,7 @@ namespace WaaS.Persistence;
 
 public class TenantStore(string connectionString) : ITenantStore
 {
-    public async Task<Tenant?> Get(string tenantName)
+    public async Task<Tenant?> Read(string tenantName)
     {
         var sql = """
             SELECT t.id, t.name, 

@@ -6,7 +6,10 @@ namespace WaaS.Common.Workflow;
 record TokenInfo(string ReferenceId, string Token);
 record TokensResponse(TokenInfo[] Tokens);
 
-public class PasswordStore(HttpClient httpClient)
+public record ListTokenItem(string Token, DateTime Created);
+record ListTokensResponse(ListTokenItem[] Items, int Total, int Limit, int Offset);
+
+public class PasswordService(HttpClient httpClient)
 {
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -16,16 +19,19 @@ public class PasswordStore(HttpClient httpClient)
 
     // This method processes sensitive data and must not be temporal activity, unless the payloads are encrypted.
     // [Activity]
-    public async Task<IEnumerable<string>> ConvertCredentials(string tenant, IEnumerable<PasswordInfo> passwordInfos, CancellationToken cancellationToken = default)
+    public async Task CreatePasswordTokens(string tenant, IEnumerable<PasswordInfo> passwordInfos, CancellationToken cancellationToken)
     {
         var passwordsToConvert = passwordInfos
             .Where(passwordInfo => passwordInfo.Credential.Password is not null)
             .ToList();
 
         if (passwordsToConvert.Count == 0)
-            return [];
+            return;
+        
+        // Keep the timeout short to avoid blocking too long
+        httpClient.Timeout = TimeSpan.FromSeconds(5);
 
-        var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens?transactional=true", new
+        var response = await httpClient.PostAsJsonAsync($"credential/v3/{tenant}/tokens", new
         {
             passwordInfos = passwordsToConvert.Select(x => new
             {
@@ -51,27 +57,18 @@ public class PasswordStore(HttpClient httpClient)
             passwordInfo.Credential.PasswordToken = token;
             passwordInfo.Credential.Reset();
         }
-
-        return tokenResult.Tokens.Select(x => x.Token);
     }
-
-    [Activity]
-    public async Task CommitPasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<string> tokens)
+ 
+    public async Task<ListTokenItem[]> ListPasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, CancellationToken cancellationToken = default)
     {
-        var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens/commit", new
-        {
-            tokens,
-            owner = new
-            {
-                stackInstanceId,
-                systemInstanceId,
-            }
-        });
-
-        response.EnsureSuccessStatusCode();
+        var tokens = await httpClient.GetFromJsonAsync<ListTokensResponse>(
+            $"credential/v3/{tenant}/stack-instances/{stackInstanceId}/system-instances/{systemInstanceId}/tokens", 
+            cancellationToken
+        ) ?? throw new InvalidOperationException("Unexpected response from Password Store.");
+        
+        return tokens.Items;
     }
 
-    [Activity]
     public async Task DeletePasswordTokens(string tenant, IEnumerable<string> tokens)
     {
         var response = await httpClient.PutAsJsonAsync($"credential/v3/{tenant}/tokens/delete", new

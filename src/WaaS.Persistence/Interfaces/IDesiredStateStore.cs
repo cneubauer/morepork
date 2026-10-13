@@ -15,8 +15,10 @@ public interface IDesiredStateStore<TDesiredState> where TDesiredState : IDesire
     /// </remarks>
     Task Lock(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId);
     Task<ulong> CreateSystemInstanceId(NpgsqlTransaction transaction, ulong stackInstanceId);
-    Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
-    Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
+    Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default);
+    Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default);
+    Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default);
+    Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default);
     Task<DesiredStateSaveResult<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false);
     Task<DesiredStateSaveResult<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false);
     Task MarkAsApplied(string transactionId);
@@ -24,10 +26,19 @@ public interface IDesiredStateStore<TDesiredState> where TDesiredState : IDesire
     Task AddOutboxMessage<TContext>(NpgsqlTransaction transaction, TContext context) where TContext : notnull;
     Task RemoveOutboxMessage(string transactionId);
     
-    Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
-    Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null);
-    Task<IEnumerable<IDesiredState<TDesiredState>>> List(int tenantId, ulong stackInstanceId, int offset, int limit);
-    Task<IEnumerable<IDesiredState<TDesiredState>>> LookupByKey(LookupResourceKeyType keyType, string keyValue);
-    Task<IEnumerable<IDesiredState<TDesiredState>>> LookupByStackInstanceId(ulong stackInstanceId);
-    Task<IEnumerable<IDesiredState<TDesiredState>>> LookupBySystemInstanceId(ulong systemInstanceId);
+    Task<IEnumerable<IDesiredState<TDesiredState>>> List(int tenantId, ulong stackInstanceId, int offset, int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists latest applied Desired State and newer ones
+    /// </summary>
+    /// <param name="tenantId"></param>
+    /// <param name="stackInstanceId"></param>
+    /// <param name="systemInstanceId"></param>
+    /// <param name="offset"></param>
+    /// <param name="limit"></param>
+    /// <returns></returns>
+    Task<IEnumerable<IDesiredState<TDesiredState>>> ListLatest(NpgsqlTransaction transaction, int tenantId, ulong stackInstanceId, ulong systemInstanceId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<IDesiredState<TDesiredState>>> LookupByKey(LookupResourceKeyType keyType, string keyValue, CancellationToken cancellationToken = default);
+    Task<IEnumerable<IDesiredState<TDesiredState>>> LookupByStackInstanceId(ulong stackInstanceId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<IDesiredState<TDesiredState>>> LookupBySystemInstanceId(ulong systemInstanceId, CancellationToken cancellationToken = default);
 }

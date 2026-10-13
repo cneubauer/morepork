@@ -56,8 +56,10 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             if (!_queue.TryDequeue(out var context))
             {
                 await Workflow.WaitConditionAsync(() => !_queue.IsEmpty || _pending.Count == 0);
+
                 if (_queue.IsEmpty && _pending.Count == 0)
                     break;
+                
                 continue;
             }
 
@@ -127,39 +129,24 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
                 TimeSpan.FromMilliseconds(Timeout.Infinite)
             );
 
-            if (!acked)
-            {
-                throw new ApplicationFailureException(
-                    $"Timed out waiting for backend actual-state acknowledgment for transaction {context.TransactionId}",
-                    errorType: "BackendAckTimeout",
-                    nonRetryable: true);
-            }
+            // If timeout is infinite we don't need this check
+            //
+            // if (!acked)
+            // {
+            //     throw new ApplicationFailureException(
+            //         $"Timed out waiting for backend actual-state acknowledgment for transaction {context.TransactionId}",
+            //         errorType: "BackendAckTimeout",
+            //         nonRetryable: true);
+            // }
 
-            // Tokens the transaction superseded. Revoked only once TechMW has acknowledged the
-            // new state, so the old password stays resolvable until then.
-            var stalePasswordTokens = context.Changes
-                .OfObject<ICredential>()
-                .OfProperty(x => x.SecurePasswordToken)
-                .Select(x => x.OldValue)
-                .Where(token => !string.IsNullOrEmpty(token))
-                .Select(token => token!)
-                .Distinct()
-                .ToList();
-
-            if (stalePasswordTokens.Count > 0)
-            {
-                await Workflow.ExecuteLocalActivityAsync(
-                    (PasswordStore activities) => activities.DeletePasswordTokens(
-                        context.Tenant.Name,
-                        stalePasswordTokens
-                    ),
-                    new()
-                    {
-                        StartToCloseTimeout = TimeSpan.FromSeconds(15),
-                        Summary = "Deleting superseded password tokens",
-                    }
-                );
-            }
+            await Workflow.ExecuteLocalActivityAsync(
+                (WaasActivities<SharedWebspaceData> activities) => activities.CleanupPasswordTokens(context, Workflow.CancellationToken),
+                new()
+                {
+                    StartToCloseTimeout = TimeSpan.FromSeconds(15),
+                    Summary = "Cleaning up password tokens",
+                }
+            );
 
             await Workflow.ExecuteLocalActivityAsync(
                 (WaasActivities<SharedWebspaceData> act) => act.SendFinalAckNotification(context.TransactionId),

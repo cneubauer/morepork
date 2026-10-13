@@ -186,7 +186,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         return (ulong)systemInstanceId;
     }   
 
-    public async Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
+    public async Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -200,7 +200,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
+    public async Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -215,7 +215,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
+    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default)
     {
         return await transaction.Connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
         {
@@ -226,7 +226,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
+    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default)
     {
         return await transaction.Connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
         {
@@ -330,7 +330,8 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             state_version AS Version, data, tenant, tombstoned,
             created, applied, expired
         FROM desired_state
-        WHERE stack_instance_id = @StackInstanceId
+        WHERE tenant = @Tenant
+          AND stack_instance_id = @StackInstanceId
           AND state_namespace   = @Namespace
           AND expired IS NULL
           AND tombstoned = false
@@ -338,7 +339,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         OFFSET @Offset LIMIT @Limit
         """;
 
-    public async Task<IEnumerable<IDesiredState<TDesiredState>>> List(int tenantId, ulong stackInstanceId, int offset, int limit)
+    public async Task<IEnumerable<IDesiredState<TDesiredState>>> List(int tenantId, ulong stackInstanceId, int offset, int limit, CancellationToken cancellationToken = default)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -351,6 +352,35 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             Offset = offset,
             Limit = limit,
         });
+    }
+
+    private const string ListLatestSql = """
+        SELECT DISTINCT ON (system_instance_id, state_zone)
+            stack_instance_id AS StackInstanceId, system_instance_id AS SystemInstanceId,
+            state_namespace AS Namespace, state_zone AS Zone,
+            state_version AS Version, data, tenant, tombstoned,
+            created, applied, expired
+        FROM desired_state
+        WHERE tenant = @Tenant
+          AND stack_instance_id = @StackInstanceId
+          AND system_instance_id = @SystemInstanceId
+          AND state_namespace   = @Namespace
+          AND applied IS NOT NULL
+          AND expired IS NULL
+        ORDER BY state_version ASC
+        """;
+
+    public async Task<IEnumerable<IDesiredState<TDesiredState>>> ListLatest(NpgsqlTransaction transaction, int tenantId, ulong stackInstanceId, ulong systemInstanceId, CancellationToken cancellationToken = default)
+    {
+        var desiredStates = await transaction.Connection.QueryAsync<DesiredState<TDesiredState>>(ListLatestSql, new
+        {
+            Tenant = tenantId,
+            StackInstanceId = (long)stackInstanceId,
+            SystemInstanceId = (long)systemInstanceId,
+            Namespace = _namespace,
+        });
+
+        return desiredStates;
     }
 
     private const string LookupByKeySql = """
@@ -419,7 +449,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         ORDER BY stack_instance_id, state_namespace, state_zone, state_version DESC;
         """;
 
-    public async Task<IEnumerable<IDesiredState<TDesiredState>>> LookupByKey(LookupResourceKeyType keyType, string keyValue)
+    public async Task<IEnumerable<IDesiredState<TDesiredState>>> LookupByKey(LookupResourceKeyType keyType, string keyValue, CancellationToken cancellationToken = default)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -431,7 +461,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IEnumerable<IDesiredState<TDesiredState>>> LookupByStackInstanceId(ulong stackInstanceId)
+    public async Task<IEnumerable<IDesiredState<TDesiredState>>> LookupByStackInstanceId(ulong stackInstanceId, CancellationToken cancellationToken = default)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -442,7 +472,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IEnumerable<IDesiredState<TDesiredState>>> LookupBySystemInstanceId(ulong systemInstanceId)
+    public async Task<IEnumerable<IDesiredState<TDesiredState>>> LookupBySystemInstanceId(ulong systemInstanceId, CancellationToken cancellationToken = default)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
