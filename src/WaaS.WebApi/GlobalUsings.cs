@@ -6,3 +6,6 @@ global using WaaS.Space.Classic.DesiredState;
 global using WaaS.Space.Classic.Workflow;
 global using WaaS.Common.Workflow;
 global using Temporalio.Client;
+global using Microsoft.AspNetCore.Mvc;
+global using Temporalio.Api.Enums.V1;
+global using WaaS.Common.ViewModel;

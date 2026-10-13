@@ -40,7 +40,7 @@ builder.Services
         builder.Configuration["Temporal:TargetHost"]!,
         WorkflowDefinitions.ClientNamespace,
         PublishWebshieldWorkflow.DefaultTaskQueue)
-    .AddScopedActivities<WaasActivities<WebshieldData>>()
+    .AddScopedActivities<WaasService<WebshieldData>>()
     .AddScopedActivities<WebshieldActivities>()
     .AddWorkflow<PublishWebshieldWorkflow>();
 

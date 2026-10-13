@@ -36,7 +36,7 @@ builder.Services
         builder.Configuration["Temporal:TargetHost"]!,
         WorkflowDefinitions.ClientNamespace,
         "space-classic")
-    .AddScopedActivities<WaasActivities<SharedWebspaceData>>()
+    .AddScopedActivities<WaasService<SharedWebspaceData>>()
     .AddScopedActivities<ClassicWebspaceActivities>()
     .AddScopedActivities<PasswordService>()
     .AddWorkflow<PublishClassicWebspaceWorkflow>();

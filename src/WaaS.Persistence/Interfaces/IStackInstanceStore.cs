@@ -10,7 +10,7 @@ public interface IStackInstanceStore
     /// </summary>
     /// <param name="stackInstanceId">The ID of the Stack Instance to retrieve.</param>
     /// <returns>The Stack Instance with the given ID, or null if not found.</returns>
-    Task<IStackInstance?> Read(ulong stackInstanceId, CancellationToken cancellationToken);
+    Task<IStackInstance?> Read(ulong stackInstanceId);
 
     /// <summary>
     /// Creates a new Stack Instance.

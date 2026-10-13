@@ -140,7 +140,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             // }
 
             await Workflow.ExecuteLocalActivityAsync(
-                (WaasActivities<SharedWebspaceData> activities) => activities.CleanupPasswordTokens(context, Workflow.CancellationToken),
+                (WaasService<SharedWebspaceData> activities) => activities.CleanupPasswordTokens(context, Workflow.CancellationToken),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(15),
@@ -149,7 +149,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             );
 
             await Workflow.ExecuteLocalActivityAsync(
-                (WaasActivities<SharedWebspaceData> act) => act.SendFinalAckNotification(context.TransactionId),
+                (WaasService<SharedWebspaceData> act) => act.SendFinalAckNotification(context.TransactionId),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(10),
@@ -215,7 +215,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             );
 
             await Workflow.ExecuteLocalActivityAsync(
-                (WaasActivities<SharedWebspaceData> actvities) => actvities.SendIntermediateNotification(transaction),
+                (WaasService<SharedWebspaceData> actvities) => actvities.SendIntermediateNotification(transaction),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(10),

@@ -1,17 +1,11 @@
-using Microsoft.AspNetCore.Mvc;
-using Temporalio.Api.Enums.V1;
-using WaaS.Common.ViewModel;
-
 namespace WaaS.WebApi;
 
 [ApiController]
 [Route("api/{tenant}/stack-instances/{stackInstanceId}/webspaces")]
 public class ClassicWebspaceController(
     ITemporalClient temporalClient,
-    ITenantStore tenantStore,
-    IStackInstanceStore stackInstanceStore,
     IDesiredStateStore<SharedWebspaceData> desiredStateStore,
-    PasswordService passwordService
+    WaasService<SharedWebspaceData> waasService
 ) : ControllerBase
 {
 
@@ -46,7 +40,7 @@ public class ClassicWebspaceController(
     /// Read Shared Webspace
     /// </summary>
     /// <remarks>
-    /// Retrieves the desired state of a shared webspace.
+    /// Retrieves the Desired State of a shared webspace.
     /// </remarks>
     /// <param name="tenant" example="demo">The tenant identifier.</param>
     /// <param name="stackInstanceId" example="1234567">The stack instance identifier.</param>
@@ -59,12 +53,7 @@ public class ClassicWebspaceController(
         [FromRoute] ulong systemInstanceId
     )
     {
-        var waasContext = await CreateWaasContext(tenant, stackInstanceId, transactionId: "", cancellationToken: HttpContext.RequestAborted);
-
-        if (waasContext is null)
-            return NotFound();
-
-        var desiredState = await desiredStateStore.Read(waasContext.Tenant.Id, stackInstanceId, systemInstanceId, cancellationToken: HttpContext.RequestAborted);
+        var desiredState = await waasService.ReadDesiredState(tenant, stackInstanceId, systemInstanceId);
 
         if (desiredState is null)
             return NotFound();
@@ -140,7 +129,7 @@ public class ClassicWebspaceController(
         CancellationToken cancellationToken
     )
     {
-        var waasContext = await CreateWaasContext(tenant, stackInstanceId, transactionId, cancellationToken);
+        var waasContext = await waasService.ReadWaasContext(tenant, stackInstanceId, transactionId);
 
         if (waasContext is null)
             return NotFound();
@@ -157,7 +146,7 @@ public class ClassicWebspaceController(
 
                 var pending = await temporalClient
                     .GetWorkflowHandle<PublishClassicWebspaceWorkflow>(resourceId)
-                    .QueryAsync(wf => wf.PendingTransactions);
+                    .QueryAsync(x => x.PendingTransactions);
 
                 if (pending.Count >= 5)
                 {
@@ -169,14 +158,14 @@ public class ClassicWebspaceController(
                     );
                 }
             }
-            catch (Temporalio.Exceptions.RpcException e) when (e.Code == Temporalio.Exceptions.RpcException.StatusCode.NotFound)
+            catch (Temporalio.Exceptions.RpcException ex) when (ex.Code == Temporalio.Exceptions.RpcException.StatusCode.NotFound)
             {
                 // Nothing queued.
             }
 
         #endregion
 
-        var context = await Upsert(waasContext, systemInstanceId, passwordInfos, modify, cancellationToken);
+        var context = await waasService.Upsert(waasContext, systemInstanceId, passwordInfos, modify, cancellationToken);
 
         if (context is null)
             return NotFound();
@@ -189,70 +178,6 @@ public class ClassicWebspaceController(
         Response.Headers.Append("Transaction-Id", context.TransactionId);
 
         return Accepted(context.DesiredState!.Data.Space.ToViewModel(context.DesiredState.SystemInstanceId));
-    }
-
-    private async Task<WaasContext?> CreateWaasContext(string tenant, ulong stackInstanceId, string transactionId, CancellationToken cancellationToken)
-    {
-        var tenantEntity = await tenantStore.Read(tenant, cancellationToken);
-
-        if (tenantEntity is null)
-            return null;
-
-        var stackInstance = await stackInstanceStore.Read(stackInstanceId, cancellationToken);
-
-        if (stackInstance is null || stackInstance.TenantId != tenantEntity.Id)
-            return null;
-
-        return new WaasContext()
-        {
-            Tenant = tenantEntity,
-            StackInstance = (StackInstance)stackInstance,
-            TransactionId = transactionId,
-        };
-    }
-
-    private async Task<ProcessingContext<SharedWebspaceData>?> Upsert(
-        WaasContext waasContext,
-        ulong? givenSystemInstanceId,
-        IEnumerable<PasswordInfo> passwordInfos,
-        Action<IDesiredState<SharedWebspaceData>> modify,
-        CancellationToken cancellationToken
-    )
-    {
-        await using var transaction = await desiredStateStore.BeginTransaction();
-
-        // Note that this is an external call and must not block too long, as it holds the database connections open
-        await passwordService.CreatePasswordTokens(waasContext.Tenant.Name, passwordInfos, cancellationToken);
-
-        var systemInstanceId = givenSystemInstanceId ?? await desiredStateStore.CreateSystemInstanceId(transaction, waasContext.StackInstance.Id);
-
-        await desiredStateStore.Lock(transaction, waasContext.StackInstance.Id, systemInstanceId);
-
-        var desiredState = givenSystemInstanceId.HasValue
-            ? await desiredStateStore.Read(transaction, waasContext.Tenant.Id, waasContext.StackInstance.Id, systemInstanceId)
-            : DesiredState<SharedWebspaceData>.Create(waasContext.Tenant, waasContext.StackInstance, systemInstanceId, waasContext.TransactionId);
-
-        if (desiredState is null)
-            return null;
-
-        modify(desiredState);
-
-        var saveResult = await desiredStateStore.Save(transaction, desiredState, waasContext.TransactionId);
-
-        var desiredStateContext = new ProcessingContext<SharedWebspaceData>()
-        {
-            Tenant = waasContext.Tenant,
-            StackInstance = waasContext.StackInstance,
-            DesiredState = (DesiredState<SharedWebspaceData>)saveResult.Current,
-            TransactionId = waasContext.TransactionId,
-            Changes = saveResult.Changes,
-        };
-
-        await desiredStateStore.AddOutboxMessage(transaction, desiredStateContext);
-
-        await transaction.CommitAsync();
-
-        return desiredStateContext;
     }
 
     private async Task<ProcessingContext<SharedWebspaceData>> Dispatch(ProcessingContext<SharedWebspaceData> context)

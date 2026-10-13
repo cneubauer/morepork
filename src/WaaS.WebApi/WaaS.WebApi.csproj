@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Systems\Space\Stretch\WaaS.Space.Stretch.DesiredState\WaaS.Space.Stretch.DesiredState.csproj" />
     <ProjectReference Include="..\Systems\Space\Classic\WaaS.Space.Classic.DesiredState\WaaS.Space.Classic.DesiredState.csproj" />
     <ProjectReference Include="..\Systems\Space\Classic\WaaS.Space.Classic.Workflow\WaaS.Space.Classic.Workflow.csproj" />
+    <ProjectReference Include="..\Systems\Webshield\WaaS.Webshield.ViewModel\WaaS.Webshield.ViewModel.csproj" />
   </ItemGroup>
 
 </Project>

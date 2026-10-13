@@ -186,7 +186,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         return (ulong)systemInstanceId;
     }   
 
-    public async Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default)
+    public async Task<IDesiredState<TDesiredState>?> Read(ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -200,7 +200,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default)
+    public async Task<IDesiredState<TDesiredState>?> Read(int tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -215,7 +215,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default)
+    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         return await transaction.Connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
         {
@@ -226,7 +226,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null, CancellationToken cancellationToken = default)
+    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         return await transaction.Connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
         {
