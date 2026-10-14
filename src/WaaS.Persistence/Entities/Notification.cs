@@ -16,6 +16,13 @@ public record Notification
 {
     public long NotificationId { get; init; }
     public required NotificationType NotificationType { get; init; }
+    public short Tenant { get; init; }
+    public ulong StackInstanceId { get; init; }
+    public ulong SystemInstanceId { get; init; }
+    public short Namespace { get; init; }
+    public short Zone { get; init; }
+    public ulong Version { get; init; }
+    public bool Tombstoned { get; init; }
     public string? Payload { get; init; }
     public required string TransactionId { get; init; }
     public DateTime Created { get; init; }

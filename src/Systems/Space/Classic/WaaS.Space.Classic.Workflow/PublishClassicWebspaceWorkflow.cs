@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using ObjectCompare;
 using Temporalio.Exceptions;
 using Temporalio.Workflows;
-using WaaS.Common.DesiredState;
 using WaaS.Common.Workflow;
 using WaaS.Space.Classic.DesiredState;
 using WaaS.Space.DesiredState;
@@ -14,13 +13,13 @@ using WaaS.Webshield.Workflow;
 [method:WorkflowInit]
 public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemInstanceId)
 {
-    private readonly List<string> _pending = [];
+    private readonly OrderedDictionary<string, DesiredState<SharedWebspaceData>> _pending = [];
     private readonly List<string> _acknowledged = [];
 
     private readonly ConcurrentQueue<ProcessingContext<SharedWebspaceData>> _queue = [];
 
     [WorkflowQuery]
-    public IReadOnlyCollection<string> PendingTransactions => [.. _pending];
+    public IReadOnlyCollection<string> PendingTransactions => [.. _pending.Keys];
 
     [WorkflowQuery]
     public IReadOnlyCollection<string> AcknowledgedTransactions => [.. _acknowledged];
@@ -149,7 +148,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             );
 
             await Workflow.ExecuteLocalActivityAsync(
-                (WaasService<SharedWebspaceData> act) => act.SendFinalAckNotification(context.TransactionId),
+                (WaasService<SharedWebspaceData> act) => act.SendFinalAckNotification(context.DesiredState),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(10),
@@ -177,7 +176,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             context.TransactionId
         );
 
-        _pending.Add(context.TransactionId);
+        _pending[context.TransactionId] = context.DesiredState;
 
         context = await Workflow.ExecuteLocalActivityAsync(
             (ClassicWebspaceActivities activities) => activities.SendToTechMw(context),
@@ -196,9 +195,9 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
     [WorkflowSignal]
     public async Task ReceiveBackendNotification(string transactionId)
     {
-        if (!_pending.Contains(transactionId)) return;
+        if (!_pending.ContainsKey(transactionId)) return;
 
-        var includedTransactions = _pending
+        var includedTransactions = _pending.Keys
             .TakeWhile(x => x != transactionId)
             .Append(transactionId)
             .ToList();
@@ -215,7 +214,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             );
 
             await Workflow.ExecuteLocalActivityAsync(
-                (WaasService<SharedWebspaceData> actvities) => actvities.SendIntermediateNotification(transaction),
+                (WaasService<SharedWebspaceData> actvities) => actvities.SendIntermediateNotification(_pending[transaction]),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(10),

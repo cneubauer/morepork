@@ -146,14 +146,14 @@ public class WaasService<TDesiredState>(
     }
 
     [Activity]
-    public async Task SendIntermediateNotification(string transactionId)
+    public async Task SendIntermediateNotification(DesiredState<TDesiredState> desiredState)
     {
-        await notificationStore.WriteNotification(NotificationType.Intermediate, transactionId);
+        await notificationStore.WriteNotification(NotificationType.Intermediate, desiredState);
     }
 
     [Activity]
-    public async Task SendFinalAckNotification(string transactionId)
+    public async Task SendFinalAckNotification(DesiredState<TDesiredState> desiredState)
     {
-        await notificationStore.WriteNotification(NotificationType.Ack, transactionId);
+        await notificationStore.WriteNotification(NotificationType.Ack, desiredState);
     }
 }

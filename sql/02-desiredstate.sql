@@ -34,11 +34,21 @@ CREATE INDEX ON outbox (leased_until);
 CREATE TABLE notifications (
     notification_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     notification_type SMALLINT NOT NULL,
+    -- A snapshot of the desired state the notification is about, so notifications can be
+    -- filtered and returned without joining desired_state.
+    tenant SMALLINT NOT NULL REFERENCES tenant (id),
+    stack_instance_id BIGINT NOT NULL,
+    system_instance_id BIGINT NOT NULL,
+    state_namespace SMALLINT NOT NULL,
+    state_zone SMALLINT NOT NULL,
+    state_version BIGINT NOT NULL,
+    tombstoned BOOLEAN NOT NULL,
     payload jsonb,
     transaction_id VARCHAR(255) NOT NULL,
     created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX ON notifications (tenant, notification_id);
 CREATE INDEX ON notifications (transaction_id);
 
 CREATE TABLE notification_pointer (
