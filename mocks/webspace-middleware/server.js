@@ -240,7 +240,7 @@ function updateWebspace(response, tenant, id, body) {
     return sendJson(response, 202, withActualState(webspace));
 }
 
-function deleteWebspace(response, tenant, id) {
+function deleteWebspace(response, tenant, id, body) {
     if (tombstoned.has(id)) {
         return sendError(response, 410, `webspace ${id} is already gone`);
     }
@@ -257,6 +257,8 @@ function deleteWebspace(response, tenant, id) {
     }
 
     console.log(`[delete] ${tenant}/webspaces/${id}`);
+    // The correlation id of a delete arrives in the request body, as for create and update.
+    scheduleActualStateNotification(webspace.ext_reference, body.ext_correlation);
     return sendJson(response, 202, withActualState({ ...webspace, state: 'deleted' }));
 }
 
@@ -288,7 +290,7 @@ const server = http.createServer(async (request, response) => {
     const resourceIdSegment = segments[2];
 
     let body = {};
-    if (request.method === 'POST' || request.method === 'PUT') {
+    if (request.method === 'POST' || request.method === 'PUT' || request.method === 'DELETE') {
         try {
             body = await readJsonBody(request);
         } catch {
@@ -312,7 +314,7 @@ const server = http.createServer(async (request, response) => {
         case 'PUT':
             return updateWebspace(response, tenant, id, body);
         case 'DELETE':
-            return deleteWebspace(response, tenant, id);
+            return deleteWebspace(response, tenant, id, body);
         default:
             return sendError(response, 404, `no mock for ${request.method} ${pathname}`);
     }

@@ -78,7 +78,7 @@ State is in-memory and resets on restart. There is no authentication; the spec's
 
 ## ActualState Notifications
 
-When a `POST` or `PUT` webspace publish request is accepted (`202 Accepted`), the mock asynchronously schedules an actual-state ACK notification after 2 seconds (`ACK_DELAY_MS`):
+When a `POST`, `PUT` or `DELETE` webspace publish request is accepted (`202 Accepted`), the mock asynchronously schedules an actual-state ACK notification after 2 seconds (`ACK_DELAY_MS`). For a `DELETE` the `ext_correlation` is read from the JSON request body, as TechMW does; a delete without a body is accepted but sends no ACK.
 
 ```http
 PUT /api/actual-state/webspace-{stackInstanceId}-{systemInstanceId}/{transactionId}

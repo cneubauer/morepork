@@ -18,15 +18,22 @@ where TDesiredState : IDesiredStateData
     {
         var id = BackendId(desiredState);
 
+        var techModel = BuildBackendModel(desiredState, extCorrelationId, stackInstance.Tags);
+
         if (desiredState.Tombstoned)
         {
-            var delelteResponse = await httpClient.DeleteAsync($"{tenant}/{ResourcePath}/{id}");
-            delelteResponse.EnsureSuccessStatusCode();
+            // TechMW takes the ext_correlation of a delete from the request body, like for create and update.
+            using var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, $"{tenant}/{ResourcePath}/{id}")
+            {
+                Content = JsonContent.Create(techModel),
+            };
+            
+            var deleteResponse = await httpClient.SendAsync(deleteRequest);
+
+            deleteResponse.EnsureSuccessStatusCode();
 
             return desiredState;
         }
-
-        var techModel = BuildBackendModel(desiredState, extCorrelationId, stackInstance.Tags);
 
         var response = id == 0
             ? await httpClient.PostAsJsonAsync($"{tenant}/{ResourcePath}", techModel)

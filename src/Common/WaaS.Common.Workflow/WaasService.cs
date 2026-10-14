@@ -146,14 +146,18 @@ public class WaasService<TDesiredState>(
     }
 
     [Activity]
-    public async Task SendIntermediateNotification(DesiredState<TDesiredState> desiredState)
+    public async Task<Persistence.Notification> SendIntermediateNotification(DesiredState<TDesiredState> desiredState)
     {
-        await notificationStore.WriteNotification(NotificationType.Intermediate, desiredState);
+        return await notificationStore.WriteNotification(NotificationType.Intermediate, desiredState);
     }
 
     [Activity]
-    public async Task SendFinalAckNotification(DesiredState<TDesiredState> desiredState)
+    public async Task<Persistence.Notification> SendFinalAckNotification(DesiredState<TDesiredState> desiredState)
     {
-        await notificationStore.WriteNotification(NotificationType.Ack, desiredState);
+        var notificationType = desiredState.Tombstoned
+            ? NotificationType.Tombstoned
+            : NotificationType.Ack;
+        
+        return await notificationStore.WriteNotification(notificationType, desiredState);
     }
 }

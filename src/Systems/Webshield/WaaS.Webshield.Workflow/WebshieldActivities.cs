@@ -99,7 +99,7 @@ public class WebshieldActivities(
             }
         }
 
-        await webshieldDesiredStateStore.Save(transaction, webshieldDesiredState, webshieldDesiredState.TransactionId);
+        await webshieldDesiredStateStore.Save(transaction, webshieldDesiredState, waasContext.TransactionId);
 
         await transaction.CommitAsync();
 

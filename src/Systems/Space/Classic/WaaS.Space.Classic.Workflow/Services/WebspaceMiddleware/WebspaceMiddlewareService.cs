@@ -51,5 +51,4 @@ public class WebspaceMiddlewareService(HttpClient httpClient)
 
         return desiredState;
     }
-
 }

@@ -124,6 +124,9 @@ services:
       RabbitMq__Hostname: "rabbitmq"
       RabbitMq__Username: "${RABBITMQ_USER}"
       RabbitMq__Password: "${RABBITMQ_PASSWORD}"
+      PasswordStore__BaseUrl: "http://password-store-mock:8082/"
+      PasswordStore__Username: "developer"
+      PasswordStore__Password: "dev"
       Webshield__AckDelayMs: 5000
     depends_on:
       postgres:
