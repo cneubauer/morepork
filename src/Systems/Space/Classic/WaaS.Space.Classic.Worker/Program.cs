@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Temporalio.Extensions.Hosting;
+using Temporalio.Runtime;
 using WaaS.Space.Classic.Workflow;
 using WaaS.Common.Workflow;
 using WebspaceMiddleware;
@@ -34,11 +35,18 @@ builder.Services.AddHttpClient<PasswordService>(
             ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
     );
 
+// One runtime per process: it owns the Prometheus listener that Prometheus scrapes.
+var temporalRuntime = new TemporalRuntime(new()
+{
+    Telemetry = new() { Metrics = new() { Prometheus = new("0.0.0.0:9000") } },
+});
+
 builder.Services
     .AddHostedTemporalWorker(
         builder.Configuration["Temporal:TargetHost"]!,
         WorkflowDefinitions.ClientNamespace,
         "space-classic")
+    .ConfigureOptions(options => options.ClientOptions!.Runtime = temporalRuntime)
     .AddScopedActivities<WaasService<SharedWebspaceData>>()
     .AddScopedActivities<ClassicWebspaceActivities>()
     .AddScopedActivities<PasswordService>()

@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Temporal server services, exposed via PROMETHEUS_ENDPOINT on the temporal container.
+  - job_name: temporal-server
+    static_configs:
+      - targets: ["temporal:8000"]
+
+  # SDK metrics from each process that hosts a TemporalRuntime (see Program.cs).
+  - job_name: temporal-sdk
+    static_configs:
+      - targets:
+          - space-classic-worker:9000
+          - webshield-worker:9000
+          - waas-api:9000

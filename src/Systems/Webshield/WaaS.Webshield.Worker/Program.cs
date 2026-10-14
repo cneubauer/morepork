@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Temporalio.Extensions.Hosting;
+using Temporalio.Runtime;
 using WaaS.Webshield.Workflow;
 using WaaS.Common.Workflow;
 using WaaS.Webshield.DesiredState;
@@ -16,6 +17,13 @@ var waasConnectionString = builder.Configuration.GetConnectionString("WaaS")
 builder.Services
     .Configure<RabbitMqOptions>(builder.Configuration
     .GetSection("RabbitMq"));
+
+// One runtime per process: it owns the Prometheus listener that Prometheus scrapes,
+// so the injected client and the hosted worker's client must share it.
+var temporalRuntime = new TemporalRuntime(new()
+{
+    Telemetry = new() { Metrics = new() { Prometheus = new("0.0.0.0:9000") } },
+});
 
 builder.Services
     .AddScoped<IStackInstanceStore>(
@@ -35,7 +43,7 @@ builder.Services
     .AddTemporalClient(options =>
     {
         options.TargetHost = builder.Configuration["Temporal:TargetHost"];
-
+        options.Runtime = temporalRuntime;
     });
 
 builder.Services.AddHttpClient<PasswordService>(
@@ -48,6 +56,7 @@ builder.Services
         builder.Configuration["Temporal:TargetHost"]!,
         WorkflowDefinitions.ClientNamespace,
         PublishWebshieldWorkflow.DefaultTaskQueue)
+    .ConfigureOptions(options => options.ClientOptions!.Runtime = temporalRuntime)
     .AddScopedActivities<WaasService<WebshieldData>>()
     .AddScopedActivities<WebshieldActivities>()
     .AddWorkflow<PublishWebshieldWorkflow>();

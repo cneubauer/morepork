@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
+using Temporalio.Runtime;
 
 using WaaS.WebApi.OpenApi;
 using WaaS.Webshield.DesiredState;
@@ -60,9 +61,16 @@ builder.Services.AddHttpClient<PasswordService>(
             ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
     );
 
+// One runtime per process: it owns the Prometheus listener that Prometheus scrapes.
+var temporalRuntime = new TemporalRuntime(new()
+{
+    Telemetry = new() { Metrics = new() { Prometheus = new("0.0.0.0:9000") } },
+});
+
 builder.Services.AddTemporalClient(options =>
 {
     options.TargetHost = builder.Configuration["Temporal:TargetHost"];
+    options.Runtime = temporalRuntime;
 });
 
 builder.Services.AddHostedService<WorkflowExecutor>();
