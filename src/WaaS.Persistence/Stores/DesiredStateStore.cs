@@ -153,8 +153,17 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
     public async Task<NpgsqlTransaction> BeginTransaction()
     {
         var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-        return await connection.BeginTransactionAsync();
+
+        try
+        {
+            await connection.OpenAsync();
+            return await connection.BeginTransactionAsync();
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
     }
 
     public async Task Lock(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId)
@@ -297,7 +306,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         );
     }
 
-    public async Task AddOutboxMessage<TContext>(NpgsqlTransaction transaction, TContext context)
+    public async Task AddOutboxMessage<TContext>(NpgsqlTransaction transaction, TContext context) where TContext : notnull
     {
         var sql = "INSERT INTO outbox (context) VALUES (@Context::jsonb);";
 

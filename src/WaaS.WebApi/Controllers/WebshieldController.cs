@@ -6,8 +6,6 @@ namespace WaaS.WebApi;
 [ApiController]
 [Route("api/{tenant}/stack-instances/{stackInstanceId}/webshield/mappings")]
 public class WebshieldController(
-    ITemporalClient temporalClient,
-    IDesiredStateStore<WebshieldData> desiredStateStore,
     WaasService<WebshieldData> waasService
 ) : ControllerBase
 {

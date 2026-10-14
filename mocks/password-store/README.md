@@ -1,19 +1,20 @@
 # Password Store Mock
 
-A dependency-free mock of the Password Store API for local development and testing against `PasswordActivities` in `WaaS.Common.Workflow`.
+A dependency-free mock of the Password Store API for local development and testing against `PasswordService` in `WaaS.Common.Workflow`.
 
 ## Endpoints
 
-The mock implements all endpoints invoked by `PasswordActivities`:
+Reference: <https://ac1winmidnlb.server.lan/PasswordStore/swagger/v1/swagger.json>
 
-| Method | Path                                          | Success | Description / Notes                                          |
-| ------ | ---------------------------------------------- | ------- | -------------------------------------------------------------- |
-| `PUT`  | `/credential/v3/{tenant}/tokens`               | `200`   | Converts a batch of passwords into tokens                      |
-| `PUT`  | `/credential/v3/{tenant}/tokens?transactional=true` | `200` | Same, but tokens are temporary until committed                 |
-| `PUT`  | `/credential/v3/{tenant}/tokens/commit`        | `200`   | Commits transactional tokens, making them permanent            |
-| `PUT`  | `/credential/v3/{tenant}/tokens/delete`        | `200`   | Deletes exactly the tokens listed in `tokens`                   |
+The mock implements only the endpoints invoked by `PasswordService`:
 
-### Converting passwords
+| Method | Path                                                                                                    | Success | Description / Notes                                      |
+| ------ | ------------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------- |
+| `POST` | `/credential/v3/{tenant}/tokens`                                                                        | `200`   | Converts a batch of passwords into tokens                |
+| `GET`  | `/credential/v3/{tenant}/stack-instances/{stackInstanceId}/system-instances/{systemInstanceId}/tokens` | `200`   | Lists the tokens of a system instance (`?limit=&offset=`) |
+| `PUT`  | `/credential/v3/{tenant}/tokens/delete`                                                                 | `200`   | Deletes the tokens listed in `tokens`                    |
+
+### Creating tokens
 
 Request:
 
@@ -23,7 +24,7 @@ Request:
     {
       "referenceId": "5c9392216d3e486f956b8e7b079f2c36",
       "password": "s3cret",
-      "systemType": 100,
+      "systemType": "sharedWebspaceLinux",
       "owner": { "stackInstanceId": 1234567, "systemInstanceId": 5001234567 }
     }
   ]
@@ -35,46 +36,50 @@ Response — one entry per request item, correlated via `referenceId`:
 ```json
 {
   "tokens": [
-    { "referenceId": "5c9392216d3e486f956b8e7b079f2c36", "token": "<uuid_without_dashes>", "expires": null }
+    { "referenceId": "5c9392216d3e486f956b8e7b079f2c36", "token": "<uuid_without_dashes>" }
   ]
 }
 ```
 
-`referenceId` and `password` are required per item; missing values yield `400`. `systemType` is the numeric
-`PasswordType` enum value (e.g. `100` = `SharedWebspaceLinux`, `300` = `Smtp`) and is stored as received.
+`referenceId` (unique per request), `password` and `systemType` are required per item; invalid values yield `400`.
+`systemType` is accepted as the API's string name (e.g. `sharedWebspaceLinux`, `smtp`) or as the numeric `PasswordType`
+value (e.g. `100`, `300`).
 
-With `?transactional=true`, created tokens are stored with an expiration (`expires` in the response,
-`TRANSACTIONAL_TOKEN_TTL_MS` from now, default 24h) instead of `null`. Uncommitted transactional tokens are
-purged automatically once they expire. Call the commit endpoint to make them permanent before that happens.
+The real API also requires `owner`. The mock accepts items without it, so clients that don't send it yet keep working,
+but those tokens are not returned by the list endpoint.
 
-### Committing tokens
+### Listing tokens
 
-`PUT /credential/v3/{tenant}/tokens/commit` with `{"tokens": ["<token>", ...]}` clears the expiration on the
-listed tokens, making them permanent. Any token not found for the tenant (already expired/purged, unknown,
-or belonging to another tenant) causes a `404` and nothing is committed.
-
-Response:
+Returns the tenant's tokens owned by the given system instance, oldest first. `limit` defaults to `100`
+(max `1000`), `offset` to `0`.
 
 ```json
 {
-  "committedCount": 1,
-  "committedTokens": ["<token>"]
+  "items": [
+    {
+      "token": "<token>",
+      "systemType": "sharedWebspaceLinux",
+      "status": "active",
+      "created": "2026-07-14T10:06:47.495Z",
+      "ownerData": { "stackInstanceId": 1234567, "systemInstanceId": 5001234567 }
+    }
+  ],
+  "total": 1,
+  "limit": 100,
+  "offset": 0
 }
 ```
 
 ### Deleting tokens
 
-`PUT /credential/v3/{tenant}/tokens/delete` with `{"tokens": ["<token>", ...]}` deletes exactly the listed
-tokens for the tenant. Tokens not belonging to the tenant (or that don't exist) are silently ignored.
-
-Response:
+`PUT /credential/v3/{tenant}/tokens/delete` with `{"tokens": ["<token>", ...]}` removes the listed tokens of the
+tenant. Unknown tokens and tokens of other tenants are skipped, so repeating a request is safe. Only the tokens
+deleted by the request are returned, so a repeat returns an empty list.
 
 ```json
-{
-  "deletedCount": 1,
-  "deletedTokens": ["<token>"],
-  "remainingCount": 2
-}
+[
+  { "token": "<token>", "systemType": "sharedWebspaceLinux", "ownerData": { "stackInstanceId": 1234567, "systemInstanceId": 5001234567 } }
+]
 ```
 
 ### Debugging & Inspection Endpoints
@@ -93,9 +98,9 @@ The mock starts with the tokens present in [`sql/04-seed.sql`](../../sql/04-seed
 
 | Token                              | Tenant | System Type               | Seed Source         |
 | ---------------------------------- | ------ | ------------------------- | ------------------- |
-| `03axxx755ddfab6b8b0dc5e005926a99` | `demo` | `100` SharedWebspaceLinux | Account `a5432101`  |
-| `818xxxfcbbaa449f99dd9dc81ecc55cd` | `demo` | `100` SharedWebspaceLinux | Account `a5432102`  |
-| `ca6xxx3feb5842baaad3fae7123428f`  | `demo` | `300` Smtp                | `mailconfiguration` |
+| `03axxx755ddfab6b8b0dc5e005926a99` | `demo` | `sharedWebspaceLinux`     | Account `a5432101`  |
+| `818xxxfcbbaa449f99dd9dc81ecc55cd` | `demo` | `sharedWebspaceLinux`     | Account `a5432102`  |
+| `ca6xxx3feb5842baaad3fae7123428f`  | `demo` | `smtp`                    | `mailconfiguration` |
 
 This ensures that delete and verification calls against seeded instances work out of the box.
 
@@ -109,7 +114,6 @@ Settings can be configured via environment variables:
 | `HOST`          | `0.0.0.0` | Host interface to bind                                               |
 | `AUTH_USERNAME` | `""`      | Optional HTTP Basic Auth username (if empty, auth check is disabled) |
 | `AUTH_PASSWORD` | `""`      | Optional HTTP Basic Auth password                                    |
-| `TRANSACTIONAL_TOKEN_TTL_MS` | `86400000` (24h) | Expiration window for tokens created with `?transactional=true` before they're purged |
 
 ## Running
 

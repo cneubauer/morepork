@@ -1,10 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
-
 namespace WaaS.WebApi;
 
 [ApiController]
 [Route("api/actual-state")]
-public class ActualStateController(ITemporalClient temporalClient, ILogger<ActualStateController> logger) : ControllerBase
+public class ActualStateController(ITemporalClient temporalClient) : ControllerBase
 {
     /// <summary>
     /// Receive Actual State

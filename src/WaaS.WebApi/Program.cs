@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 
 using WaaS.WebApi.OpenApi;
+using WaaS.Webshield.DesiredState;
 
 var builder = WebApplication.CreateBuilder(args);
 var enumNamingPolicy = new LowercaseJsonNamingPolicy();
@@ -41,8 +42,14 @@ builder.Services.AddScoped<IStackInstanceStore>(
     serviceProvider => new StackInstanceStore(waasConnectionString)
 );
 builder.Services.AddDesiredStateStore<SharedWebspaceData>(waasConnectionString);
+builder.Services.AddDesiredStateStore<WebshieldData>(waasConnectionString);
+
 builder.Services.AddTenantStore(waasConnectionString);
 
+builder.Services.AddScoped<WaasService<SharedWebspaceData>>();
+builder.Services.AddScoped<WaasService<WebshieldData>>();
+
+builder.Services.AddScoped<PasswordService>();
 builder.Services.AddHttpClient<PasswordService>(
         client => client.BaseAddress = new Uri(builder.Configuration["PasswordStore:BaseUrl"]
             ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))

@@ -1,5 +1,5 @@
 PATH
-  remote: ../../../spectre/spectre-core
+  remote: ../../../../Tools/spectre/spectre-core
   specs:
     spectre-core (2.1.4)
       debug

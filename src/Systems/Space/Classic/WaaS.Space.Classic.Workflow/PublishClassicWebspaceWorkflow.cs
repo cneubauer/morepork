@@ -140,7 +140,7 @@ public class PublishClassicWebspaceWorkflow(ulong stackInstanceId, ulong systemI
             // }
 
             await Workflow.ExecuteLocalActivityAsync(
-                (WaasService<SharedWebspaceData> activities) => activities.CleanupPasswordTokens(context, Workflow.CancellationToken),
+                (WaasService<SharedWebspaceData> activities) => activities.CleanupPasswordTokens(context),
                 new()
                 {
                     StartToCloseTimeout = TimeSpan.FromSeconds(15),

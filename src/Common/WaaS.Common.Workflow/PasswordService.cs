@@ -15,11 +15,12 @@ public class PasswordService(HttpClient httpClient)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
     // This method processes sensitive data and must not be temporal activity, unless the payloads are encrypted.
     // [Activity]
-    public async Task CreatePasswordTokens(string tenant, IEnumerable<PasswordInfo> passwordInfos, CancellationToken cancellationToken)
+    public async Task CreatePasswordTokens(string tenant, ulong stackInstanceId, ulong systemInstanceId, IEnumerable<PasswordInfo> passwordInfos, CancellationToken cancellationToken)
     {
         var passwordsToConvert = passwordInfos
             .Where(passwordInfo => passwordInfo.Credential.Password is not null)
@@ -38,6 +39,11 @@ public class PasswordService(HttpClient httpClient)
                 referenceId = x.ReferenceId,
                 password = x.Credential.Password,
                 systemType = x.PasswordType,
+                owner = new
+                {
+                    stackInstanceId,
+                    systemInstanceId,
+                }
             }),
         }, _jsonOptions, cancellationToken);
 

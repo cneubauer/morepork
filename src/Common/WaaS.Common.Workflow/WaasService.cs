@@ -10,6 +10,7 @@ public class WaasService<TDesiredState>(
     IStackInstanceStore stackInstanceStore,
     ITenantStore tenantStore,
     IDesiredStateStore<TDesiredState> desiredStateStore,
+    INotificationStore notificationStore,
     PasswordService passwordService,
     ILogger<WaasService<TDesiredState>> logger
 ) where TDesiredState : class, IDesiredStateData, new()
@@ -54,11 +55,11 @@ public class WaasService<TDesiredState>(
     {
         await using var transaction = await desiredStateStore.BeginTransaction();
 
+        var systemInstanceId = givenSystemInstanceId ?? await desiredStateStore.CreateSystemInstanceId(transaction, waasContext.StackInstance.Id);
+
         // Note that this is an external call and must not block too long, as it holds the database connections open
         if (passwordInfos.Any())
-            await passwordService.CreatePasswordTokens(waasContext.Tenant.Name, passwordInfos, cancellationToken);
-
-        var systemInstanceId = givenSystemInstanceId ?? await desiredStateStore.CreateSystemInstanceId(transaction, waasContext.StackInstance.Id);
+            await passwordService.CreatePasswordTokens(waasContext.Tenant.Name, waasContext.StackInstance.Id, systemInstanceId, passwordInfos, cancellationToken);
 
         await desiredStateStore.Lock(transaction, waasContext.StackInstance.Id, systemInstanceId);
 
@@ -100,10 +101,12 @@ public class WaasService<TDesiredState>(
     }
 
     [Activity]
-    public async Task CleanupPasswordTokens(WaasContext<TDesiredState> context, CancellationToken cancellationToken)
+    public async Task CleanupPasswordTokens(WaasContext<TDesiredState> context)
     {
         if (context.DesiredState.Data is not IPasswordTokenContainer)
             return;
+
+        var cancellationToken = ActivityExecutionContext.Current.CancellationToken;
 
         using var transaction = await desiredStateStore.BeginTransaction();
 
@@ -145,14 +148,12 @@ public class WaasService<TDesiredState>(
     [Activity]
     public async Task SendIntermediateNotification(string transactionId)
     {
-        logger.LogInformation("Emitting completion notification for transaction {TransactionId}", transactionId);
-        await Task.CompletedTask;
+        await notificationStore.WriteNotification(NotificationType.Intermediate, transactionId);
     }
 
     [Activity]
     public async Task SendFinalAckNotification(string transactionId)
     {
-        logger.LogInformation("Emitting completion notification for transaction {TransactionId}", transactionId);
-        await Task.CompletedTask;
+        await notificationStore.WriteNotification(NotificationType.Ack, transactionId);
     }
 }

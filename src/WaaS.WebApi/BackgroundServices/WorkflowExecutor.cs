@@ -27,7 +27,7 @@ public class WorkflowExecutor(
         DELETE FROM outbox
         WHERE ctid IN (
             SELECT ctid FROM outbox
-            WHERE leased_until < (NOW() AT TIME ZONE 'utc')
+            WHERE leased_until < NOW()
             ORDER BY created FOR UPDATE SKIP LOCKED LIMIT 10
         )
         RETURNING context;
