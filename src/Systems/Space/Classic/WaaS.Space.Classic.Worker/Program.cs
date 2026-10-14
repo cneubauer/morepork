@@ -18,6 +18,9 @@ builder.Services
     .AddScoped<IStackInstanceStore>(
         serviceProvider => new StackInstanceStore(waasConnectionString)
     )
+    .AddScoped<INotificationStore>(
+        serviceProvider => new NotificationStore(waasConnectionString)
+    )
     .AddDesiredStateStore<SharedWebspaceData>(waasConnectionString)
     .AddTenantStore(waasConnectionString);
 

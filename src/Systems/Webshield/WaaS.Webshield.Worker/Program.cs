@@ -21,6 +21,9 @@ builder.Services
     .AddScoped<IStackInstanceStore>(
         serviceProvider => new StackInstanceStore(waasConnectionString)
     )
+    .AddScoped<INotificationStore>(
+        serviceProvider => new NotificationStore(waasConnectionString)
+    )
     .AddDesiredStateStore<WebshieldData>(waasConnectionString)
     .AddTenantStore(waasConnectionString)
     .AddScoped<ISslProxyRepository>(
@@ -34,6 +37,11 @@ builder.Services
         options.TargetHost = builder.Configuration["Temporal:TargetHost"];
 
     });
+
+builder.Services.AddHttpClient<PasswordService>(
+        client => client.BaseAddress = new Uri(builder.Configuration["PasswordStore:BaseUrl"]
+            ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
+    );
 
 builder.Services
     .AddHostedTemporalWorker(

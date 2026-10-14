@@ -41,6 +41,11 @@ var waasConnectionString = builder.Configuration.GetConnectionString("WaaS")
 builder.Services.AddScoped<IStackInstanceStore>(
     serviceProvider => new StackInstanceStore(waasConnectionString)
 );
+
+builder.Services.AddScoped<INotificationStore>(
+    serviceProvider => new NotificationStore(waasConnectionString)
+);
+
 builder.Services.AddDesiredStateStore<SharedWebspaceData>(waasConnectionString);
 builder.Services.AddDesiredStateStore<WebshieldData>(waasConnectionString);
 
