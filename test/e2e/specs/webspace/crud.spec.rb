@@ -1,6 +1,7 @@
 describe 'morepork' do
   it 'does create, read, update and delete a shared webspace', tags: [:webspace, :create, :read, :update, :delete] do
     stack_id = 1234567
+    system_id = nil
 
     group 'create webspace' do
   
@@ -16,16 +17,13 @@ describe 'morepork' do
 
       assert response.code.to be 202
 
-      transaction_id = response.headers['Transaction-Id']
-
-      assert transaction_id.not_to be_empty
+      system_id = response.json.systemInstanceId
 
       also 'check webspace properties', with: response.json
-
+      also 'wait for notification', with: response.headers['Transaction-Id']
+    
     end
-
-    system_id = response.json.systemInstanceId
-
+  
     group 'read webspace' do
 
       http 'morepork' do
@@ -63,6 +61,7 @@ describe 'morepork' do
       assert response.code.to be 202
 
       also 'check webspace properties', with: response.json
+      also 'wait for notification', with: response.headers['Transaction-Id']
 
     end
 
@@ -73,6 +72,8 @@ describe 'morepork' do
       end
 
       assert response.code.to be 202
+
+      also 'wait for notification', with: response.headers['Transaction-Id']
 
     end
   end
