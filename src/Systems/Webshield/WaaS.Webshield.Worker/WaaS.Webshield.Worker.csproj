@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\WaaS.Webshield.Workflow\WaaS.Webshield.Workflow.csproj" />
+    <ProjectReference Include="..\WaaS.Webshield\WaaS.Webshield.csproj" />
   </ItemGroup>
 
 </Project>

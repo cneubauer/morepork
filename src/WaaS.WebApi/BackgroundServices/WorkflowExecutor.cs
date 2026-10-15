@@ -105,7 +105,7 @@ public class WorkflowExecutor(
                 new WorkflowOptions
                 {
                     Id = resourceId,
-                    TaskQueue = "space-classic",
+                    TaskQueue = PublishClassicWebspaceWorkflow.DefaultTaskQueue,
                     IdConflictPolicy = WorkflowIdConflictPolicy.UseExisting,
                 });
 

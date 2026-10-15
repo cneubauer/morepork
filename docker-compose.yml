@@ -121,7 +121,7 @@ services:
   space-classic-worker:
     build:
       context: .
-      dockerfile: src/Systems/Space/Classic/WaaS.Space.Classic.Worker/Dockerfile
+      dockerfile: src/Systems/Space/WaaS.Space.Classic.Worker/Dockerfile
     environment:
       ConnectionStrings__WaaS: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Temporal__TargetHost: "temporal:7233"

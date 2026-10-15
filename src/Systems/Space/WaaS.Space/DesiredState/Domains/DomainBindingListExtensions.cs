@@ -1,0 +1,2 @@
+namespace WaaS.Space.DesiredState;
+

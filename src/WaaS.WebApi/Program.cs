@@ -2,10 +2,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
-using Temporalio.Runtime;
 
+using WaaS.Space.Classic;
 using WaaS.WebApi.OpenApi;
-using WaaS.Webshield.DesiredState;
+using WaaS.Webshield;
 
 var builder = WebApplication.CreateBuilder(args);
 var enumNamingPolicy = new LowercaseJsonNamingPolicy();
@@ -36,47 +36,13 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 
-var waasConnectionString = builder.Configuration.GetConnectionString("WaaS")
-    ?? throw new InvalidOperationException("Missing connection string for WaaS");
-
-builder.Services.AddScoped<IStackInstanceStore>(
-    serviceProvider => new StackInstanceStore(waasConnectionString)
-);
-
-builder.Services.AddScoped<INotificationStore>(
-    serviceProvider => new NotificationStore(waasConnectionString)
-);
-
-builder.Services.AddDesiredStateStore<SharedWebspaceData>(waasConnectionString);
-builder.Services.AddDesiredStateStore<WebshieldData>(waasConnectionString);
-
-builder.Services.AddTenantStore(waasConnectionString);
-
-builder.Services.AddScoped<WaasService<SharedWebspaceData>>();
-builder.Services.AddScoped<WaasService<WebshieldData>>();
-
-builder.Services.AddScoped<IPasswordService, PasswordService>();
-builder.Services.AddHttpClient<IPasswordService, PasswordService>(
-        client => client.BaseAddress = new Uri(builder.Configuration["PasswordStore:BaseUrl"]
-            ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
-    );
-
-// One runtime per process: it owns the Prometheus listener that Prometheus scrapes.
-var temporalRuntime = new TemporalRuntime(new()
-{
-    Telemetry = new() { Metrics = new() { Prometheus = new("0.0.0.0:9000") } },
-});
-
-builder.Services.AddTemporalClient(options =>
-{
-    options.TargetHost = builder.Configuration["Temporal:TargetHost"];
-    options.Runtime = temporalRuntime;
-});
+builder.Services
+    .AddWaasCore(builder.Configuration)
+    .AddWaasTemporalClient(builder.Configuration)
+    .AddClassicWebspaceApi(builder.Configuration)
+    .AddWebshieldApi(builder.Configuration);
 
 builder.Services.AddHostedService<WorkflowExecutor>();
-
-builder.Services.AddHealthChecks()
-    .AddWaasDatabaseCheck(waasConnectionString);
 
 var app = builder.Build();
 

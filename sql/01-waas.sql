@@ -3,7 +3,7 @@ CREATE TABLE tenant (
     name VARCHAR(255) NOT NULL UNIQUE
 );
 
-CREATE TYPE tenant_profile_type AS ENUM ('general', 'webspace', 'webshield');
+CREATE TYPE tenant_profile_type AS ENUM ('general', 'webspace', 'database', 'webshield', 'redirect');
 
 CREATE TABLE tenant_profile (
     id BIGSERIAL NOT NULL PRIMARY KEY,

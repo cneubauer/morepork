@@ -64,7 +64,7 @@ internal static class LookupResourceExtractor
     {
         if (type.IsPrimitive || type == typeof(string) || type.Namespace?.StartsWith("System") == true)
             return false;
-        if (type.Assembly.GetName().Name?.Contains("DesiredState") == true)
+        if (type.Namespace?.Split('.').Contains("DesiredState") == true)
             return true;
         if (typeof(ILookupEntryProvider).IsAssignableFrom(type))
             return true;

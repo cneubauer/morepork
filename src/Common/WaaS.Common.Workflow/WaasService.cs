@@ -47,7 +47,7 @@ public class WaasService<TDesiredState>(
         WaasContext waasContext,
         ulong? givenSystemInstanceId,
         IEnumerable<PasswordInfo> passwordInfos,
-        Action<IDesiredState<TDesiredState>> modify,
+        Action<WaasContext, IDesiredState<TDesiredState>> modify,
         CancellationToken cancellationToken
     )
     {
@@ -78,7 +78,7 @@ public class WaasService<TDesiredState>(
         if (desiredState is null)
             return null;
 
-        modify(desiredState);
+        modify(waasContext, desiredState);
 
         var saveResult = await desiredStateStore.Save(transaction, desiredState, waasContext.TransactionId);
 
