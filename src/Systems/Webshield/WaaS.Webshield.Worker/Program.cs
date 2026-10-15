@@ -59,6 +59,7 @@ builder.Services
     .ConfigureOptions(options => options.ClientOptions!.Runtime = temporalRuntime)
     .AddScopedActivities<WaasService<WebshieldData>>()
     .AddScopedActivities<WebshieldActivities>()
+    .AddScopedActivities<PasswordService>()
     .AddWorkflow<PublishWebshieldWorkflow>();
 
 builder.Services.AddHealthChecks()
