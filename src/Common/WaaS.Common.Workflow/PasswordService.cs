@@ -9,7 +9,7 @@ record TokensResponse(TokenInfo[] Tokens);
 public record ListTokenItem(string Token, DateTime Created);
 record ListTokensResponse(ListTokenItem[] Items, int Total, int Limit, int Offset);
 
-public class PasswordService(HttpClient httpClient)
+public class PasswordService(HttpClient httpClient) : IPasswordService
 {
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {

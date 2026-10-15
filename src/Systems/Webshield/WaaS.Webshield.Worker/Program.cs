@@ -46,7 +46,7 @@ builder.Services
         options.Runtime = temporalRuntime;
     });
 
-builder.Services.AddHttpClient<PasswordService>(
+builder.Services.AddHttpClient<IPasswordService, PasswordService>(
         client => client.BaseAddress = new Uri(builder.Configuration["PasswordStore:BaseUrl"]
             ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
     );

@@ -30,7 +30,7 @@ builder.Services.AddHttpClient<ISpaceMiddlewareService<SharedWebspaceData, Websp
             ?? throw new InvalidOperationException("Missing WebspaceMiddleware:BaseUrl"))
     );
 
-builder.Services.AddHttpClient<PasswordService>(
+builder.Services.AddHttpClient<IPasswordService, PasswordService>(
         client => client.BaseAddress = new Uri(builder.Configuration["PasswordStore:BaseUrl"]
             ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
     );

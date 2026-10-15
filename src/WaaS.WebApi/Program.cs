@@ -55,8 +55,8 @@ builder.Services.AddTenantStore(waasConnectionString);
 builder.Services.AddScoped<WaasService<SharedWebspaceData>>();
 builder.Services.AddScoped<WaasService<WebshieldData>>();
 
-builder.Services.AddScoped<PasswordService>();
-builder.Services.AddHttpClient<PasswordService>(
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddHttpClient<IPasswordService, PasswordService>(
         client => client.BaseAddress = new Uri(builder.Configuration["PasswordStore:BaseUrl"]
             ?? throw new InvalidOperationException("Missing PasswordStore:BaseUrl"))
     );
