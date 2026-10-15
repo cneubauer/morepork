@@ -1,9 +1,33 @@
 using System.Reflection;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using ObjectCompare;
 
 namespace WaaS.Persistence;
+
+public record DatabaseTransaction(NpgsqlConnection Connection, NpgsqlTransaction Transaction) : IDisposable, IAsyncDisposable
+{
+    public Task Commit()
+    {
+        return Transaction.CommitAsync();
+    }
+
+    public Task Rollback()
+    {
+        return Transaction.RollbackAsync();
+    }
+
+    public void Dispose()
+    {
+        Transaction.Dispose();
+        Connection.Dispose();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await Transaction.DisposeAsync();
+        await Connection.DisposeAsync();
+    }
+}
 
 public class DesiredStateStore<TDesiredState>(string connectionString) : IDesiredStateStore<TDesiredState>
     where TDesiredState : IDesiredStateData, new()
@@ -150,14 +174,15 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         ORDER BY Ordinal;
         """;
 
-    public async Task<NpgsqlTransaction> BeginTransaction()
+    public async Task<DatabaseTransaction> BeginTransaction()
     {
         var connection = new NpgsqlConnection(connectionString);
 
         try
         {
             await connection.OpenAsync();
-            return await connection.BeginTransactionAsync();
+            var transaction = await connection.BeginTransactionAsync();
+            return new DatabaseTransaction(connection, transaction);
         }
         catch
         {
@@ -166,7 +191,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         }
     }
 
-    public async Task Lock(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId)
+    public async Task Lock(DatabaseTransaction transaction, ulong stackInstanceId, ulong systemInstanceId)
     {
         await transaction.Connection.ExecuteAsync(
             "SELECT pg_advisory_xact_lock(@LockKey1, @LockKey2);",
@@ -175,11 +200,11 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
                 LockKey1 = unchecked((int)stackInstanceId),
                 LockKey2 = unchecked((int)systemInstanceId),
             },
-            transaction
+            transaction.Transaction
         );
     }
 
-    public async Task<ulong> CreateSystemInstanceId(NpgsqlTransaction transaction, ulong stackInstanceId)
+    public async Task<ulong> CreateSystemInstanceId(DatabaseTransaction transaction, ulong stackInstanceId)
     {
         const string sql = """
             INSERT INTO system_instance (stack_instance_id)
@@ -190,7 +215,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         var systemInstanceId = await transaction.Connection.ExecuteScalarAsync<long>(sql, new
         {
             StackInstanceId = (long)stackInstanceId,
-        }, transaction);
+        }, transaction.Transaction);
 
         return (ulong)systemInstanceId;
     }   
@@ -224,7 +249,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
+    public async Task<IDesiredState<TDesiredState>?> Read(DatabaseTransaction transaction, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         return await transaction.Connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
         {
@@ -235,7 +260,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         });
     }
 
-    public async Task<IDesiredState<TDesiredState>?> Read(NpgsqlTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
+    public async Task<IDesiredState<TDesiredState>?> Read(DatabaseTransaction transaction, short tenantId, ulong stackInstanceId, ulong systemInstanceId, ulong? version = null)
     {
         return await transaction.Connection.QuerySingleOrDefaultAsync<DesiredState<TDesiredState>>(ReadSql, new
         {
@@ -249,19 +274,16 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
 
     public async Task<DesiredStateSaveResult<TDesiredState>> Save(IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false)
     {
-        using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-
-        await using var transaction = await connection.BeginTransactionAsync();
+        using var transaction = await BeginTransaction();
 
         var result = await Save(transaction, desiredState, transactionId, force);
 
-        await transaction.CommitAsync();
+        await transaction.Transaction.CommitAsync();
 
         return result;
     }
 
-    public async Task<DesiredStateSaveResult<TDesiredState>> Save(NpgsqlTransaction transaction, IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false)
+    public async Task<DesiredStateSaveResult<TDesiredState>> Save(DatabaseTransaction transaction, IDesiredState<TDesiredState> desiredState, string transactionId, bool force = false)
     {
         var parameters = new
         {
@@ -281,7 +303,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         };
 
         // The saved row comes first, followed by the row it replaced — absent on a first save.
-        var rows = (await transaction.Connection.QueryAsync<DesiredState<TDesiredState>>(SaveSql, parameters, transaction))
+        var rows = (await transaction.Connection.QueryAsync<DesiredState<TDesiredState>>(SaveSql, parameters, transaction.Transaction))
             .ToArray();
 
         var current = rows[0];
@@ -306,7 +328,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         );
     }
 
-    public async Task AddOutboxMessage<TContext>(NpgsqlTransaction transaction, TContext context) where TContext : notnull
+    public async Task AddOutboxMessage<TContext>(DatabaseTransaction transaction, TContext context) where TContext : notnull
     {
         var sql = "INSERT INTO outbox (context) VALUES (@Context::jsonb);";
 
@@ -315,7 +337,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         await transaction.Connection.ExecuteAsync(sql, new
         {
             Context = json
-        }, transaction);
+        }, transaction.Transaction);
     }
 
     public async Task RemoveOutboxMessage(string transactionId)
@@ -379,7 +401,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
         ORDER BY state_version ASC
         """;
 
-    public async Task<IEnumerable<IDesiredState<TDesiredState>>> ListLatest(NpgsqlTransaction transaction, int tenantId, ulong stackInstanceId, ulong systemInstanceId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<IDesiredState<TDesiredState>>> ListLatest(DatabaseTransaction transaction, int tenantId, ulong stackInstanceId, ulong systemInstanceId, CancellationToken cancellationToken = default)
     {
         var desiredStates = await transaction.Connection.QueryAsync<DesiredState<TDesiredState>>(ListLatestSql, new
         {
@@ -493,7 +515,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
     }
 
     internal static async Task SaveLookupResources(
-        NpgsqlTransaction transaction,
+        DatabaseTransaction transaction,
         IDesiredState<TDesiredState> state,
         IEnumerable<(LookupResourceKeyType ResourceKey, string Text)> entries)
     {
@@ -523,7 +545,7 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             state.Zone,
         };
 
-        await transaction.Connection.ExecuteAsync(deleteSql, context, transaction);
+        await transaction.Connection.ExecuteAsync(deleteSql, context, transaction.Transaction);
 
         var rows = entries
             .Where(x => !string.IsNullOrEmpty(x.Text))
@@ -546,6 +568,6 @@ public class DesiredStateStore<TDesiredState>(string connectionString) : IDesire
             .ToArray();
 
         if (rows.Length > 0)
-            await transaction.Connection.ExecuteAsync(insertSql, rows, transaction);
+            await transaction.Connection.ExecuteAsync(insertSql, rows, transaction.Transaction);
     }
 }

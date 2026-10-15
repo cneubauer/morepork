@@ -48,7 +48,7 @@ public class WebshieldActivities(
         List<string> mappingsToRemove
     )
     {
-        await using var transaction = await webshieldDesiredStateStore.BeginTransaction();
+        using var transaction = await webshieldDesiredStateStore.BeginTransaction();
         await using var connection = transaction.Connection;
 
         await webshieldDesiredStateStore.Lock(transaction, waasContext.StackInstance.Id, 0);
@@ -101,7 +101,7 @@ public class WebshieldActivities(
 
         await webshieldDesiredStateStore.Save(transaction, webshieldDesiredState, waasContext.TransactionId);
 
-        await transaction.CommitAsync();
+        await transaction.Transaction.CommitAsync();
 
         return new WaasContext<WebshieldData>
         {

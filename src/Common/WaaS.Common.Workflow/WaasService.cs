@@ -1,6 +1,5 @@
 namespace WaaS.Common.Workflow;
 
-using Microsoft.Extensions.Logging;
 using Temporalio.Activities;
 using WaaS.Common.DesiredState;
 using WaaS.Common.ViewModel;
@@ -11,8 +10,7 @@ public class WaasService<TDesiredState>(
     ITenantStore tenantStore,
     IDesiredStateStore<TDesiredState> desiredStateStore,
     INotificationStore notificationStore,
-    PasswordService passwordService,
-    ILogger<WaasService<TDesiredState>> logger
+    IPasswordService passwordService
 ) where TDesiredState : class, IDesiredStateData, new()
 {
     public async Task<WaasContext?> ReadWaasContext(string tenant, ulong stackInstanceId, string transactionId)
@@ -34,7 +32,7 @@ public class WaasService<TDesiredState>(
             TransactionId = transactionId,
         };
     }
-    
+
     public async Task<IDesiredState<TDesiredState>?> ReadDesiredState(string tenant, ulong stackInstanceId, ulong systemInstanceId)
     {
         var waasContext = await ReadWaasContext(tenant, stackInstanceId, transactionId: "");
@@ -95,7 +93,7 @@ public class WaasService<TDesiredState>(
 
         await desiredStateStore.AddOutboxMessage(transaction, desiredStateContext);
 
-        await transaction.CommitAsync(cancellationToken);
+        await transaction.Commit();
 
         return desiredStateContext;
     }
@@ -115,9 +113,9 @@ public class WaasService<TDesiredState>(
             context.StackInstance.Id,
             context.DesiredState.SystemInstanceId
         );
-        
+
         var latestDesiredStates = await desiredStateStore.ListLatest(
-            transaction,    
+            transaction,
             context.Tenant.Id,
             context.StackInstance.Id,
             context.DesiredState.SystemInstanceId,
@@ -142,7 +140,7 @@ public class WaasService<TDesiredState>(
 
         await passwordService.DeletePasswordTokens(context.Tenant.Name, unusedTokens);
 
-        transaction.Commit();
+        transaction.Transaction.Commit();
     }
 
     [Activity]
@@ -157,7 +155,7 @@ public class WaasService<TDesiredState>(
         var notificationType = desiredState.Tombstoned
             ? NotificationType.Tombstoned
             : NotificationType.Ack;
-        
+
         return await notificationStore.WriteNotification(notificationType, desiredState);
     }
 }

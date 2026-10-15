@@ -9,7 +9,7 @@ public static class DesiredStateStoreExtensions
         Action<IDesiredState<TDesiredState>> modify
     ) where TDesiredState : IDesiredStateData, new()
     {
-        await using var transaction = await store.BeginTransaction();
+        using var transaction = await store.BeginTransaction();
 
         var systemInstanceId = givenSystemInstanceId ?? await store.CreateSystemInstanceId(transaction, context.StackInstance.Id);
 
@@ -37,7 +37,7 @@ public static class DesiredStateStoreExtensions
 
         await store.AddOutboxMessage(transaction, desiredStateContext);
 
-        await transaction.CommitAsync();
+        await transaction.Transaction.CommitAsync();
 
         return desiredStateContext;
     }
